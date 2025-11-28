@@ -1,0 +1,17 @@
+import type { Config } from "@coinbase/cdp-hooks";
+import { http } from "viem";
+import { base, baseSepolia } from "wagmi/chains";
+
+export const cdpConfig: Config = {
+  projectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID!,
+  ethereum: {
+    createOnLogin: "eoa",
+  },
+  solana: {
+    createOnLogin: true,
+  },
+  transports: {
+    [base.id]: http(),
+    [baseSepolia.id]: http(),
+  },
+};

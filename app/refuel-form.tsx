@@ -126,6 +126,8 @@ export default function RefuelForm() {
       if (!refuelData) {
         throw new Error("Invalid refuel data");
       }
+
+      console.log("refuel data", refuelData);
       const api = withPaymentInterceptor(
         axios.create({
           baseURL: CANISTER_URL,

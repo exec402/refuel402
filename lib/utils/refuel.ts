@@ -201,17 +201,17 @@ export function buildRefuelMessage(
     )
   );
 
-  // Call 4: Mint EXEC reward for the initiator
-  calls.push(
-    buildCall(
-      MINTER_ADDRESS,
-      encodeFunctionData({
-        abi: minterAbi,
-        functionName: "mintFor",
-        args: [initiator],
-      })
-    )
-  );
+  // // Call 4: Mint EXEC reward for the initiator
+  // calls.push(
+  //   buildCall(
+  //     MINTER_ADDRESS,
+  //     encodeFunctionData({
+  //       abi: minterAbi,
+  //       functionName: "mintFor",
+  //       args: [initiator],
+  //     })
+  //   )
+  // );
 
   const message = buildMulticallMessage(calls, initiator);
 

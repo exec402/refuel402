@@ -15,6 +15,8 @@ import { formatUnits } from "viem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ETH } from "@/lib/constants/tokens";
 
+import { useCurrentChainTokenPrice } from "@/hooks/useCurrentChainTokenPrice";
+
 function TokenRow({
   balance,
   onClick,
@@ -22,6 +24,9 @@ function TokenRow({
   balance: TokenBalance | NativeTokenBalance;
   onClick?: (token: Token | NativeToken) => void;
 }) {
+  const tokenPrice = useCurrentChainTokenPrice(
+    "address" in balance.token ? balance.token.address : undefined
+  );
   return (
     <div
       className="flex items-center cursor-pointer justify-between hover:bg-accent px-4 py-3 transition-colors"
@@ -42,7 +47,15 @@ function TokenRow({
         </div>
       </div>
       <div className="flex flex-col">
-        <span className="text-sm font-medium">-</span>
+        <span className="text-sm font-medium">
+          {tokenPrice
+            ? `$${formatNumber(
+                Number(
+                  formatUnits(BigInt(balance.balance), balance.token.decimals)
+                ) * tokenPrice
+              )}`
+            : "-"}
+        </span>
       </div>
     </div>
   );

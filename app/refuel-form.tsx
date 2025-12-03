@@ -15,27 +15,24 @@ import { useMutation } from "@tanstack/react-query";
 import { formatEther, formatUnits, isAddress } from "viem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskFeeStore } from "@/stores/taskFee";
-import axios from "axios";
+
 import { formatNumber } from "@/lib/utils";
-import {
-  CANISTER_URL,
-  INTEGRATOR_ADDRESS,
-  EXEC_REWARD_PER_USDC,
-} from "@/lib/constants";
+import { REFERRER_ADDRESS, EXEC_REWARD_PER_USDC } from "@/lib/constants";
 
 import RecipientsUploader from "./recipients-uploader";
 
-import { withPaymentInterceptor } from "@/lib/x402";
+import { useCall } from "@exec402/react";
+
 import { toast } from "sonner";
-import { useWalletClient, useAccount } from "wagmi";
+import { useAccount } from "wagmi";
 import { type Chain, baseSepolia } from "viem/chains";
 
 import { useLastRefuelTaskIdStore } from "@/stores/lastRefuelId";
-import { useEthPrice } from "@/hooks/usePrices";
+
 import { useTokenBalance } from "@/hooks/useTokenBalances";
 import { getRefuelData } from "@/lib/utils";
 
-import { useAutoCallTaskFee } from "@/hooks/useEstimateTxFee";
+import { useAutoCallTaskFee } from "@/hooks/useAutoCallTaskFee";
 import { useCurrentChain } from "@/hooks/useCurrentChain";
 import { useUsdc } from "@/hooks/useToken";
 
@@ -45,6 +42,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useRefuelQuote } from "@/hooks/useRefuelQuote";
+import { useCurrentChainTokenPrice } from "@/hooks/useCurrentChainTokenPrice";
 
 type Tab = "solo" | "batch";
 
@@ -72,8 +70,6 @@ export default function RefuelForm() {
   const [isRefuelingForOther, setIsRefuelingForOther] = useState(false);
   const [destination, setDestination] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const { data: walletClient } = useWalletClient();
 
   const { taskFee, setTaskFee, isAutoTaskFee, toggleIsAutoTaskFee } =
     useTaskFeeStore();
@@ -104,6 +100,8 @@ export default function RefuelForm() {
     else setBatchAmount(a);
   };
 
+  const { mutateAsync: call } = useCall();
+
   const refuelData = useMemo(
     () =>
       address && currentChain
@@ -127,15 +125,6 @@ export default function RefuelForm() {
         throw new Error("Invalid refuel data");
       }
 
-      console.log("refuel data", refuelData);
-      const api = withPaymentInterceptor(
-        axios.create({
-          baseURL: CANISTER_URL,
-        }),
-        // eslint-disable-next-line
-        walletClient as any
-      );
-
       const description = `Refuel ${amount} USDC to ${recipients.length} ${
         recipients.length > 1 ? "addresses" : "address"
       }(from ${currentChain.name} to ${targetChain.name})`;
@@ -144,30 +133,19 @@ export default function RefuelForm() {
         ? (autoTaskFee || 0).toString()
         : taskFee || "0";
 
-      return await api
-        .post<{
-          data: {
-            task_id: string;
-          };
-        }>("/call", {
-          amount: parseUsdc(amount.toString()).toString(),
-          target: refuelData.target,
-          description,
-          data: refuelData.data,
-          initiator: address,
-          chainId: currentChain?.id,
-          integrator: INTEGRATOR_ADDRESS,
-          fee: parseUsdc(fee).toString(),
-        })
-        .then((res) => res.data?.data)
-        .catch((e) => {
-          console.log(e);
-          throw new Error(e.response?.data?.error ?? "Unknown error");
-        });
+      return await call({
+        amount: parseUsdc(amount.toString()).toString(),
+        target: refuelData.target,
+        description,
+        data: refuelData.data as `0x${string}`,
+        chainId: currentChain?.id,
+        referrer: REFERRER_ADDRESS as `0x${string}`,
+        fee: parseUsdc(fee).toString(),
+      });
     },
     onSuccess: (data) => {
       console.log("refuel data", data);
-      setLastRefuelTaskId(data.task_id);
+      setLastRefuelTaskId(data.taskId);
     },
     onError: (error) => {
       if (
@@ -187,7 +165,7 @@ export default function RefuelForm() {
     targetChainId: targetChain.id,
   });
 
-  const { data: ethPrice } = useEthPrice();
+  const ethPrice = useCurrentChainTokenPrice();
 
   const usdcBalance = useTokenBalance(usdc);
 

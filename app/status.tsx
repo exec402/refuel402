@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTask } from "@/hooks/useTasks";
+
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
 import { Timer, CircleCheck } from "lucide-react";
@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PingDot from "@/components/ping-dot";
 import { useLastRefuelTaskIdStore } from "@/stores/lastRefuelId";
-import { getTaskExpirationTime } from "@/lib/utils/task";
-
+import { getTaskExpirationTime } from "@exec402/core";
+import { useTask } from "@exec402/react";
 function CountDown({ ts }: { ts: number }) {
   const [seconds, setSeconds] = useState(
     Math.round(ts - new Date().getTime() / 1000)
@@ -28,15 +28,10 @@ function CountDown({ ts }: { ts: number }) {
 }
 
 export default function Status({ id }: { id: string }) {
-  const { data: task } = useTask(id);
+  const { data: task } = useTask(id, { refetchInterval: 1000 });
   const { setLastRefuelTaskId } = useLastRefuelTaskIdStore();
 
   const router = useRouter();
-
-  const payloadJson = useMemo(
-    () => JSON.parse(task?.payload ?? "{}"),
-    [task?.payload]
-  );
 
   useEffect(() => {
     if (task?.status === "Executed" || task?.status === "Expired") {
@@ -47,16 +42,14 @@ export default function Status({ id }: { id: string }) {
   }, [task, setLastRefuelTaskId]);
 
   const expirationTime = useMemo(
-    () => (payloadJson.permit ? getTaskExpirationTime(payloadJson.permit) : 0),
-    [payloadJson]
+    () => (task ? getTaskExpirationTime(task) : 0),
+    [task]
   );
 
   const onBack = () => {
     setLastRefuelTaskId("");
     router.push("/");
   };
-
-  console.log("task", task, task?.status);
 
   return (
     <motion.div

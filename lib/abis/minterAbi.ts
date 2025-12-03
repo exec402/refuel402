@@ -16,6 +16,11 @@ export const minterAbi = [
         name: "_feePool",
         type: "address",
       },
+      {
+        internalType: "uint16",
+        name: "_feePoolBps",
+        type: "uint16",
+      },
     ],
     stateMutability: "nonpayable",
     type: "constructor",
@@ -76,6 +81,19 @@ export const minterAbi = [
     ],
     name: "OwnershipTransferred",
     type: "event",
+  },
+  {
+    inputs: [],
+    name: "BPS_DENOMINATOR",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
   },
   {
     inputs: [],
@@ -143,6 +161,19 @@ export const minterAbi = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "feePoolBps",
+    outputs: [
+      {
+        internalType: "uint16",
+        name: "",
+        type: "uint16",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       {
         internalType: "address",
@@ -171,6 +202,19 @@ export const minterAbi = [
   {
     inputs: [],
     name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint16",
+        name: "newFeePoolBps",
+        type: "uint16",
+      },
+    ],
+    name: "setFeePoolBps",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

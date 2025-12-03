@@ -1,6 +1,5 @@
 import type { Token, NativeToken } from "@/types/token";
-
-import { ADDRESS_MAP } from "./addresses";
+import { getChainConfig } from "@exec402/core";
 
 export const EXEC: Token = {
   name: "Exec402 Token",
@@ -33,26 +32,28 @@ export const ETH: NativeToken = {
 };
 
 export function getUsdc(chainId: number): Token {
+  const chainConfig = getChainConfig(chainId);
   return {
     ...TOKEN_ALIASES.usdc,
-    address: ADDRESS_MAP[chainId]?.usdc,
+    address: chainConfig?.tokens.usdc ?? ("" as `0x${string}`),
   };
 }
 
 export function getWeth(chainId: number): Token {
+  const chainConfig = getChainConfig(chainId);
   return {
     ...TOKEN_ALIASES.weth,
-    address: ADDRESS_MAP[chainId]?.weth,
+    address: chainConfig?.tokens.weth ?? ("" as `0x${string}`),
   };
 }
 
 export function getDefaultTokenList(chainId: number): Token[] {
-  const addresses = ADDRESS_MAP[chainId];
-  if (!addresses) return [];
+  const chainConfig = getChainConfig(chainId);
+  if (!chainConfig) return [];
 
   return [
     EXEC,
-    { ...TOKEN_ALIASES.usdc, address: addresses.usdc },
-    { ...TOKEN_ALIASES.weth, address: addresses.weth },
+    { ...TOKEN_ALIASES.usdc, address: chainConfig.tokens.usdc },
+    { ...TOKEN_ALIASES.weth, address: chainConfig.tokens.weth },
   ];
 }

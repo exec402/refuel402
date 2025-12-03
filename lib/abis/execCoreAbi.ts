@@ -13,7 +13,7 @@ export const execCoreAbi = [
       },
       {
         internalType: "uint16",
-        name: "_integratorFeeBps",
+        name: "_referrerFeeBps",
         type: "uint16",
       },
     ],
@@ -230,7 +230,7 @@ export const execCoreAbi = [
       },
       {
         internalType: "address",
-        name: "integrator",
+        name: "referrer",
         type: "address",
       },
       {
@@ -298,19 +298,6 @@ export const execCoreAbi = [
   },
   {
     inputs: [],
-    name: "integratorFeeBps",
-    outputs: [
-      {
-        internalType: "uint16",
-        name: "",
-        type: "uint16",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
     name: "owner",
     outputs: [
       {
@@ -350,20 +337,20 @@ export const execCoreAbi = [
   },
   {
     inputs: [],
-    name: "renounceOwnership",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
+    name: "referrerFeeBps",
+    outputs: [
       {
         internalType: "uint16",
-        name: "newFeeBps",
+        name: "",
         type: "uint16",
       },
     ],
-    name: "setIntegratorFeeBps",
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -377,6 +364,19 @@ export const execCoreAbi = [
       },
     ],
     name: "setProtocolFeeRecipient",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint16",
+        name: "newFeeBps",
+        type: "uint16",
+      },
+    ],
+    name: "setReferrerFeeBps",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -410,7 +410,7 @@ export const execCoreAbi = [
       },
       {
         internalType: "address",
-        name: "integrator",
+        name: "referrer",
         type: "address",
       },
       {

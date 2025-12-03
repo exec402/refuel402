@@ -1,13 +1,8 @@
 import { buildCall, buildMulticallMessage } from "@/lib/execCore";
 import { encodeFunctionData, parseUnits, type Address } from "viem";
-import {
-  ADDRESS_MAP,
-  SPOKE_POOL_ADDRESS,
-  EXEC_CORE_ADDRESS,
-  ethUsdcPoolFees,
-  MINTER_ADDRESS,
-} from "@/lib/constants";
-import { minterAbi } from "@/lib/x402/abis/minterAbi";
+import { ethUsdcPoolFees, MINTER_ADDRESS } from "@/lib/constants";
+import { getChainConfig } from "@exec402/core";
+import { minterAbi } from "@/lib/abis/minterAbi";
 
 export function buildRefuelMessage(
   initiator: Address,
@@ -17,8 +12,14 @@ export function buildRefuelMessage(
   targetChainId: number,
   minEthOut = "0"
 ) {
-  const { usdc, swapRouter, weth, multicallHandler } =
-    ADDRESS_MAP[targetChainId];
+  const targetChainConfig = getChainConfig(targetChainId);
+  if (!targetChainConfig) {
+    throw new Error(`Unsupported target chain: ${targetChainId}`);
+  }
+
+  const { usdc, weth } = targetChainConfig.tokens;
+  const { swapRouter, multicallHandler, execCore } =
+    targetChainConfig.contracts;
 
   const amountUsdcBigInt = parseUnits(amountUsdc, 6);
   const minEthOutBigInt = parseUnits(minEthOut, 18);
@@ -48,7 +49,7 @@ export function buildRefuelMessage(
             },
           ],
           functionName: "transferFrom",
-          args: [EXEC_CORE_ADDRESS, multicallHandler, amountUsdcBigInt],
+          args: [execCore, multicallHandler, amountUsdcBigInt],
         })
       )
     );
@@ -226,20 +227,22 @@ export function getRefuelData(
   targetChainId: number,
   minEthOut = "0"
 ) {
-  const sourceChainAddresses = ADDRESS_MAP[sourceChainId];
-  if (!sourceChainAddresses) {
+  const sourceChainConfig = getChainConfig(sourceChainId);
+  if (!sourceChainConfig) {
     return undefined;
   }
-  const { usdc: sourceUsdc, multicallHandler: sourceMulticallHandler } =
-    sourceChainAddresses;
+  const sourceUsdc = sourceChainConfig.tokens.usdc;
+  const sourceMulticallHandler = sourceChainConfig.contracts.multicallHandler;
+  const sourceExecCore = sourceChainConfig.contracts.execCore;
+  const sourceSpokePool = sourceChainConfig.contracts.spokePool;
 
-  const targetChainAddresses = ADDRESS_MAP[targetChainId];
-  if (!targetChainAddresses) {
+  const targetChainConfig = getChainConfig(targetChainId);
+  if (!targetChainConfig) {
     return undefined;
   }
 
-  const { multicallHandler: destMulticallHandler, usdc: destUsdc } =
-    targetChainAddresses;
+  const destMulticallHandler = targetChainConfig.contracts.multicallHandler;
+  const destUsdc = targetChainConfig.tokens.usdc;
 
   const message = buildRefuelMessage(
     initiator,
@@ -280,7 +283,7 @@ export function getRefuelData(
       ],
       functionName: "depositV3",
       args: [
-        EXEC_CORE_ADDRESS, // depositor
+        sourceExecCore, // depositor
         destMulticallHandler,
         sourceUsdc, // inputToken
         destUsdc, // outputToken
@@ -314,9 +317,7 @@ export function getRefuelData(
   }
 
   return {
-    target: isCrossChain
-      ? (SPOKE_POOL_ADDRESS as `0x${string}`)
-      : sourceMulticallHandler,
+    target: isCrossChain ? sourceSpokePool : sourceMulticallHandler,
     data,
   };
 }

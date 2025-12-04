@@ -8,7 +8,7 @@ export const DEFAULT_CHAIN_ID = Number(
 );
 
 export const SUPPORTED_CHAINS =
-  NETWORK === "mainnet" ? [base] : ([baseSepolia, optimismSepolia] as const);
+  NETWORK === "mainnet" ? ([base] as const) : ([baseSepolia, optimismSepolia] as const);
 
 export const CHAIN_MAP: Record<number, Chain> = Object.fromEntries(
   SUPPORTED_CHAINS.map((chain) => [chain.id, chain])

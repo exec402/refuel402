@@ -14,6 +14,7 @@ import { useClipboard } from "@/hooks/useClipboard";
 import { toast } from "sonner";
 
 import { useCurrentChain } from "@/hooks/useCurrentChain";
+import ChainIcon from "../chain-icon";
 
 export default function AccountMenu() {
   const { address } = useAccount();
@@ -28,7 +29,10 @@ export default function AccountMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="group flex cursor-pointer flex-1 items-center justify-center sm:flex-none sm:justify-start">
-        <Jazzicon diameter={38} seed={jsNumberForAddress(address ?? "")} />
+        <div className="relative">
+          <Jazzicon diameter={32} seed={jsNumberForAddress(address ?? "")} />
+          <ChainIcon className="absolute -bottom-0.5 -right-0.5 border-2 border-background size-4.5" />
+        </div>
         <div className="flex items-center space-x-1 ml-3">
           <span className="font-semibold text-lg">
             {ellipseMiddle(address ?? "", 4, 6)}

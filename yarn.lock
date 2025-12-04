@@ -360,21 +360,21 @@
     ethereum-cryptography "^2.0.0"
     micro-ftch "^0.3.1"
 
-"@exec402/core@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@exec402/core/-/core-0.2.0.tgz#7a8c5ff2a3a3eeb97e32ed2f75bd686c844878ca"
-  integrity sha512-C6EH6YyynxWpes3req5gy8j/njrlOHVVi3isCYlvg+F4uXiE/4+e/gpdL6NiFgykSrUpcQn/6ZhrHwZuAyJXow==
+"@exec402/core@^0.2.9":
+  version "0.2.9"
+  resolved "https://registry.yarnpkg.com/@exec402/core/-/core-0.2.9.tgz#c5a92e380a8c9a6951a6134739b63c7317941650"
+  integrity sha512-U+pYBWOMArRzRiIYgeY3++nLMCJZwBjzsbAN6KLbZbvvgqBzbiN+1PsgyxB1nv04AlJC8VprfS1xd0i/RFnvvQ==
   dependencies:
     axios "^1.11.0"
     x402 "^0.7.3"
     zod "^3.24.2"
 
-"@exec402/react@^0.2.3":
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/@exec402/react/-/react-0.2.3.tgz#6ea0d8b2a783dbd7f9c156214cee88c83620644a"
-  integrity sha512-lMvr//xbwLgaMXp1Be/8DbTQAuGiG1fpIIEz0suMP1C99WaDcz8LTVUQUYhnKVkHo+8oOwuoybWkpcgOV5wdtw==
+"@exec402/react@^0.2.9":
+  version "0.2.9"
+  resolved "https://registry.yarnpkg.com/@exec402/react/-/react-0.2.9.tgz#b7506843edfa4d79f61c4561a37fc62d75eeb85c"
+  integrity sha512-/N+JmMY1PF255rKX57p6kmQxvffZGgFscrHlCSEiTHrGevFmNnvA/YqLlc8KSbxGJj7f7F1NNiDRSWYLI/lrNQ==
   dependencies:
-    "@exec402/core" "^0.2.0"
+    "@exec402/core" "^0.2.9"
 
 "@floating-ui/core@^1.7.3":
   version "1.7.3"
@@ -5616,6 +5616,11 @@ mipd@0.0.7, mipd@^0.0.7:
   version "0.0.7"
   resolved "https://registry.npmjs.org/mipd/-/mipd-0.0.7.tgz"
   integrity sha512-aAPZPNDQ3uMTdKbuO2YmAw2TxLHO0moa4YKAyETM/DTj5FloZo+a+8tU+iv4GmW+sOxKLSRwcSFuczk+Cpt6fg==
+
+moment@^2.30.1:
+  version "2.30.1"
+  resolved "https://registry.yarnpkg.com/moment/-/moment-2.30.1.tgz#f8c91c07b7a786e30c59926df530b4eac96974ae"
+  integrity sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==
 
 motion-dom@^12.23.23:
   version "12.23.23"

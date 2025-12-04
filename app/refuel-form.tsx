@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskFeeStore } from "@/stores/taskFee";
 
 import { formatNumber } from "@/lib/utils";
-import { REFERRER_ADDRESS, EXEC_REWARD_PER_USDC } from "@/lib/constants";
+import { REFERRER_ADDRESS } from "@/lib/constants";
 
 import RecipientsUploader from "./recipients-uploader";
 
@@ -408,7 +408,7 @@ export default function RefuelForm() {
                       )
                     </span>
                   )}
-                  <span className="ml-1 text-[#2c5cf5]">
+                  {/* <span className="ml-1 text-[#2c5cf5]">
                     +{" "}
                     {formatNumber(
                       (isAutoTaskFee
@@ -416,7 +416,7 @@ export default function RefuelForm() {
                         : Number(taskFee ?? 0)) * EXEC_REWARD_PER_USDC
                     )}{" "}
                     EXEC
-                  </span>
+                  </span> */}
                 </div>
               ) : (
                 <Skeleton className="h-5 w-42" />

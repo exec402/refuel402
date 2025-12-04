@@ -1,4 +1,3 @@
-import "@/lib/setupProxy";
 import { blockScoutApis } from "@/lib/constants/blockScoutApis";
 import { NextRequest, NextResponse } from "next/server";
 

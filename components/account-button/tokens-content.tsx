@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { QrCode, Send } from "lucide-react";
 
 import { formatNumber } from "@/lib/utils";
 import { useTokenBalance, useTokenBalances } from "@/hooks/useTokenBalances";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
 import TokenIcon from "@/components/token-icon";
 import { TabsContent } from "@/components/ui/tabs";
 import {
@@ -15,18 +17,15 @@ import { formatUnits } from "viem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ETH } from "@/lib/constants/tokens";
 
-import { useCurrentChainTokenPrice } from "@/hooks/useCurrentChainTokenPrice";
-
 function TokenRow({
   balance,
+  price,
   onClick,
 }: {
   balance: TokenBalance | NativeTokenBalance;
+  price: number | undefined;
   onClick?: (token: Token | NativeToken) => void;
 }) {
-  const tokenPrice = useCurrentChainTokenPrice(
-    "address" in balance.token ? balance.token.address : undefined
-  );
   return (
     <div
       className="flex items-center cursor-pointer justify-between hover:bg-accent px-4 py-3 transition-colors"
@@ -48,11 +47,11 @@ function TokenRow({
       </div>
       <div className="flex flex-col">
         <span className="text-sm font-medium">
-          {tokenPrice
+          {price
             ? `$${formatNumber(
                 Number(
                   formatUnits(BigInt(balance.balance), balance.token.decimals)
-                ) * tokenPrice
+                ) * price
               )}`
             : "-"}
         </span>
@@ -71,10 +70,46 @@ export default function TokensContent({
   const { data: balances } = useTokenBalances();
   const nativeBalance = useTokenBalance(ETH);
 
+  // Collect all token addresses
+  const tokenAddresses = useMemo(() => {
+    if (!balances) return [];
+    return balances.map((b) => (b.token as Token).address);
+  }, [balances]);
+
+  // Batch fetch all token prices
+  const { prices, ethPrice, isLoading: isPricesLoading } = useTokenPrices(tokenAddresses);
+
+  // Calculate total portfolio value
+  const totalValue = useMemo(() => {
+    let total = 0;
+
+    // Native token (ETH)
+    if (nativeBalance?.balance && ethPrice) {
+      total += Number(formatUnits(BigInt(nativeBalance.balance), 18)) * ethPrice;
+    }
+
+    // ERC20 tokens
+    if (balances) {
+      for (const balance of balances) {
+        const addr = (balance.token as Token).address.toLowerCase();
+        const price = prices[addr];
+        if (price && balance.balance) {
+          total += Number(formatUnits(BigInt(balance.balance), balance.token.decimals)) * price;
+        }
+      }
+    }
+
+    return total;
+  }, [nativeBalance, ethPrice, balances, prices]);
+
   return (
     <TabsContent value="tokens" className="flex flex-col flex-1 h-full">
       <div className="p-4 flex flex-col space-y-1">
-        <span className="text-2xl font-bold">${formatNumber(0)}</span>
+        {isPricesLoading ? (
+          <Skeleton className="h-8 w-24" />
+        ) : (
+          <span className="text-2xl font-bold">${formatNumber(totalValue)}</span>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4 mt-4 px-4">
         <Button size="lg" onClick={() => onSend()}>
@@ -108,12 +143,14 @@ export default function TokensContent({
           <>
             <TokenRow
               balance={nativeBalance}
+              price={ethPrice}
               onClick={() => onSend(nativeBalance.token)}
             />
             {balances.map((balance) => (
               <TokenRow
                 key={(balance.token as Token).address}
                 balance={balance}
+                price={prices[(balance.token as Token).address.toLowerCase()]}
               />
             ))}
           </>

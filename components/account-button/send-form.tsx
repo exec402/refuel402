@@ -1,7 +1,13 @@
 import { useCallback, useState, type FormEvent } from "react";
 import Decimal from "decimal.js";
 import { ChevronDown, Clipboard, Loader2, Send } from "lucide-react";
-import { parseUnits, type Address, isAddress, erc20Abi } from "viem";
+import {
+  parseUnits,
+  type Address,
+  isAddress,
+  erc20Abi,
+  formatUnits,
+} from "viem";
 import { usePublicClient, useSendTransaction, useWriteContract } from "wagmi";
 import { toast } from "sonner";
 
@@ -19,7 +25,14 @@ import { formatNumber } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { useTokenBalance, useTokenBalances } from "@/hooks/useTokenBalances";
 import { useUsdc } from "@/hooks/useToken";
-import { NativeToken, Token } from "@/types/token";
+import {
+  NativeToken,
+  Token,
+  NativeTokenBalance,
+  TokenBalance,
+} from "@/types/token";
+import { ETH } from "@/lib/constants/tokens";
+import { useAccount, useBalance } from "wagmi";
 
 function TokenSelect({
   selectedToken,
@@ -28,14 +41,36 @@ function TokenSelect({
   selectedToken: Token | NativeToken | undefined;
   onSelectToken: (token: Token | NativeToken) => void;
 }) {
+  const { address } = useAccount();
   const { data: tokenBalances } = useTokenBalances();
+  const { data: nativeBalance } = useBalance({
+    address,
+    query: {
+      enabled: !!address,
+      refetchInterval: 5000,
+    },
+  });
+
+  // Combine ETH with ERC20 tokens
+  const allBalances: (TokenBalance | NativeTokenBalance)[] = [];
+
+  if (nativeBalance) {
+    allBalances.push({
+      token: ETH,
+      balance: nativeBalance.value.toString(),
+    });
+  }
+
+  if (tokenBalances) {
+    allBalances.push(...tokenBalances);
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-3 rounded-lg border border-transparent bg-muted/60 px-3 py-2 text-left transition-colors hover:bg-background"
+          className="flex w-full rounded-lg items-center justify-between gap-3 border border-transparent bg-muted/60 px-3 py-2 text-left transition-colors hover:bg-background"
         >
           <div className="flex items-center gap-3">
             {selectedToken ? (
@@ -48,9 +83,14 @@ function TokenSelect({
                   <span className="text-xs text-muted-foreground">
                     Balance{" "}
                     {formatNumber(
-                      tokenBalances?.find(
-                        (balance) => balance.token === selectedToken
-                      )?.balance
+                      formatUnits(
+                        BigInt(
+                          allBalances.find(
+                            (balance) => balance.token === selectedToken
+                          )?.balance ?? "0"
+                        ),
+                        selectedToken.decimals
+                      )
                     )}
                   </span>
                 </div>
@@ -65,20 +105,20 @@ function TokenSelect({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-56"
+        className="w-56 rounded-lg shadow-none"
         align="start"
         style={{
           width: "var(--radix-popper-anchor-width)",
         }}
       >
-        {tokenBalances?.length ? (
-          tokenBalances.map(({ token, balance }) => (
+        {allBalances.length ? (
+          allBalances.map(({ token, balance }) => (
             <DropdownMenuItem
               key={token.symbol}
               onSelect={() => {
                 onSelectToken(token);
               }}
-              className="flex items-center gap-3"
+              className="flex items-center gap-3 rounded-lg"
             >
               <TokenIcon token={token} className="size-6" />
               <div className="flex flex-col">
@@ -86,7 +126,8 @@ function TokenSelect({
                   {token.symbol}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatNumber(balance)} {token.symbol}
+                  {formatNumber(formatUnits(BigInt(balance), token.decimals))}{" "}
+                  {token.symbol}
                 </span>
               </div>
             </DropdownMenuItem>
@@ -120,6 +161,11 @@ export default function SendForm({
 
   const tokenBalance = useTokenBalance(selectedToken);
 
+  const balance =
+    tokenBalance !== undefined
+      ? formatUnits(BigInt(tokenBalance.balance), tokenBalance.token.decimals)
+      : undefined;
+
   const handleAmountChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const value = event.target.value.replace(/,/g, ".");
@@ -131,9 +177,9 @@ export default function SendForm({
   );
 
   const handleUseMax = useCallback(() => {
-    if (!tokenBalance) return;
-    setAmount(String(tokenBalance));
-  }, [tokenBalance]);
+    if (!balance) return;
+    setAmount(String(balance));
+  }, [balance]);
 
   const handlePaste = useCallback(async () => {
     try {
@@ -234,7 +280,7 @@ export default function SendForm({
             }}
           />
 
-          <div className="mt-4 flex items-center justify-between border-2 border-transparent gap-3 rounded-lg bg-muted/60 px-3 py-2 focus-within:border-primary focus-within:bg-background">
+          <div className="mt-4 flex items-center rounded-lg justify-between border-2 border-transparent gap-3 bg-muted/60 px-3 py-2 focus-within:border-primary focus-within:bg-background">
             <Input
               value={amount}
               onChange={handleAmountChange}
@@ -259,7 +305,7 @@ export default function SendForm({
 
       <div className="space-y-2">
         <p className="font-semibold">Recipient Wallet</p>
-        <div className="flex items-center gap-3 rounded-lg border-2 border-transparent bg-muted/60 px-3 py-2 focus-within:border-primary focus-within:bg-background">
+        <div className="flex rounded-lg items-center gap-3 border-2 border-transparent bg-muted/60 px-3 py-2 focus-within:border-primary focus-within:bg-background">
           <Input
             value={recipient}
             onChange={(event) => setRecipient(event.target.value)}

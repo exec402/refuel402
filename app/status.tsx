@@ -35,14 +35,6 @@ export default function Status({ id }: { id: string }) {
 
   const router = useRouter();
 
-  useEffect(() => {
-    if (task?.status === "Expired") {
-      setTimeout(() => {
-        setLastRefuelTaskId("");
-      }, 1500);
-    }
-  }, [task, setLastRefuelTaskId]);
-
   const expirationTime = useMemo(
     () => (task?.status === "Pending" ? getTaskExpirationTime(task) : 0),
     [task]

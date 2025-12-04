@@ -1,8 +1,13 @@
 import { ChevronDown, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { baseSepolia, optimismSepolia, type Chain } from "viem/chains";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { type Chain } from "viem/chains";
+import { SUPPORTED_CHAINS } from "@/lib/constants";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import Image from "next/image";
 
 function ChainOption({
@@ -55,7 +60,7 @@ export default function ChainSelector({
   onChange: (chain: Chain) => void;
 }) {
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [chain, setChain] = useState<Chain>(baseSepolia);
+  const [chain, setChain] = useState<Chain>(SUPPORTED_CHAINS[0]);
 
   useEffect(() => {
     onChange(chain);
@@ -72,7 +77,7 @@ export default function ChainSelector({
         className="rounded-lg overflow-hidden shadow-none p-0"
         style={{ width: "var(--radix-popover-trigger-width)" }}
       >
-        {[baseSepolia, optimismSepolia].map((c) => (
+        {SUPPORTED_CHAINS.map((c) => (
           <ChainOption
             key={c.id}
             chain={c}

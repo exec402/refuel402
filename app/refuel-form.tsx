@@ -141,20 +141,22 @@ export default function RefuelForm() {
         chainId: currentChain?.id,
         referrer: REFERRER_ADDRESS as `0x${string}`,
         fee: parseUsdc(fee).toString(),
+      }).catch((err) => {
+        if (
+          err.name === "UserRejectedRequestError" ||
+          err.message.includes("User rejected")
+        ) {
+          return;
+        }
+        throw new Error(err.response.data.error ?? "Unknown error");
       });
     },
     onSuccess: (data) => {
-      console.log("refuel data", data);
-      setLastRefuelTaskId(data.taskId);
+      if (data) {
+        setLastRefuelTaskId(data.taskId);
+      }
     },
     onError: (error) => {
-      if (
-        error.name === "UserRejectedRequestError" ||
-        error.message.includes("User rejected")
-      ) {
-        return;
-      }
-
       console.log(error);
       toast.error(`Refuel failed: ${error.message ?? "Unknown error"}`);
     },

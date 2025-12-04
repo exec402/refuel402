@@ -1,8 +1,14 @@
 import { buildCall, buildMulticallMessage } from "@/lib/execCore";
 import { encodeFunctionData, parseUnits, type Address } from "viem";
-import { ethUsdcPoolFees, MINTER_ADDRESS } from "@/lib/constants";
+import {
+  DEFAULT_CHAIN_ID,
+  ethUsdcPoolFees,
+  MINTER_ADDRESS,
+} from "@/lib/constants";
 import { getChainConfig } from "@exec402/core";
 import { minterAbi } from "@/lib/abis/minterAbi";
+
+type Call = ReturnType<typeof buildCall>;
 
 export function buildRefuelMessage(
   initiator: Address,
@@ -10,7 +16,8 @@ export function buildRefuelMessage(
   recipients: Address[],
   sourceChainId: number,
   targetChainId: number,
-  minEthOut = "0"
+  minEthOut = "0",
+  extraCalls: Call[] = []
 ) {
   const targetChainConfig = getChainConfig(targetChainId);
   if (!targetChainConfig) {
@@ -26,7 +33,7 @@ export function buildRefuelMessage(
 
   const poolFee = ethUsdcPoolFees[targetChainId];
 
-  const calls = [];
+  const calls: Call[] = [];
 
   const isCrossChain = targetChainId !== sourceChainId;
 
@@ -202,17 +209,8 @@ export function buildRefuelMessage(
     )
   );
 
-  // Call 4: Mint EXEC reward for the initiator
-  calls.push(
-    buildCall(
-      MINTER_ADDRESS,
-      encodeFunctionData({
-        abi: minterAbi,
-        functionName: "mintFor",
-        args: [initiator],
-      })
-    )
-  );
+  // Add extra calls (e.g., mint call for same-chain refuel)
+  calls.push(...extraCalls);
 
   const message = buildMulticallMessage(calls, initiator);
 
@@ -244,7 +242,58 @@ export function getRefuelData(
   const destMulticallHandler = targetChainConfig.contracts.multicallHandler;
   const destUsdc = targetChainConfig.tokens.usdc;
 
-  const message = buildRefuelMessage(
+  const isCrossChain = targetChainId !== sourceChainId;
+
+  // Build mint call if from DEFAULT_CHAIN_ID
+  const mintCall =
+    sourceChainId === DEFAULT_CHAIN_ID
+      ? buildCall(
+          MINTER_ADDRESS,
+          encodeFunctionData({
+            abi: minterAbi,
+            functionName: "mintFor",
+            args: [initiator],
+          })
+        )
+      : null;
+
+  if (!isCrossChain) {
+    const extraCalls: Call[] = mintCall ? [mintCall] : [];
+    const refuelMessage = buildRefuelMessage(
+      initiator,
+      amountUsdc,
+      recipients,
+      sourceChainId,
+      targetChainId,
+      minEthOut,
+      extraCalls
+    );
+
+    const data = encodeFunctionData({
+      abi: [
+        {
+          name: "handleMessage",
+          type: "function",
+          inputs: [
+            { name: "token", type: "address" },
+            { name: "message", type: "bytes" },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+      ],
+      functionName: "handleMessage",
+      args: [destUsdc, refuelMessage],
+    });
+
+    return {
+      target: destMulticallHandler,
+      data,
+    };
+  }
+
+  // For cross-chain refuel
+  const refuelMessage = buildRefuelMessage(
     initiator,
     amountUsdc,
     recipients,
@@ -253,12 +302,11 @@ export function getRefuelData(
     minEthOut
   );
 
-  const isCrossChain = targetChainId !== sourceChainId;
+  const amountUsdcBigInt = parseUnits(amountUsdc, 6);
 
-  let data = "";
-
-  if (isCrossChain) {
-    data = encodeFunctionData({
+  // If no mint needed, call depositV3 directly (depositor = ExecCore)
+  if (!mintCall) {
+    const depositV3Data = encodeFunctionData({
       abi: [
         {
           name: "depositV3",
@@ -287,37 +335,138 @@ export function getRefuelData(
         destMulticallHandler,
         sourceUsdc, // inputToken
         destUsdc, // outputToken
-        parseUnits(amountUsdc, 6), // inputAmount
-        parseUnits(amountUsdc, 6), // outputAmount
+        amountUsdcBigInt, // inputAmount
+        amountUsdcBigInt, // outputAmount
         BigInt(targetChainId), // destinationChainId
         "0x0000000000000000000000000000000000000000",
         Math.floor(Date.now() / 1000), // quoteTimestamp
         Math.floor(Date.now() / 1000) + 4 * 3600, // fillDeadline
         0, // exclusivityDeadline
-        message, // message
+        refuelMessage, // message
       ],
     });
-  } else {
-    data = encodeFunctionData({
-      abi: [
-        {
-          name: "handleMessage",
-          type: "function",
-          inputs: [
-            { name: "token", type: "address" },
-            { name: "message", type: "bytes" },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-      ],
-      functionName: "handleMessage",
-      args: [sourceUsdc, message],
-    });
+
+    return {
+      target: sourceSpokePool,
+      data: depositV3Data,
+    };
   }
 
+  // Cross-chain + mint needed: use multicall
+  // 1. transferFrom ExecCore to MulticallHandler
+  // 2. approve SpokePool
+  // 3. depositV3 (depositor = MulticallHandler)
+  // 4. mintFor
+  const calls: Call[] = [
+    // Transfer USDC from ExecCore to MulticallHandler
+    buildCall(
+      sourceUsdc,
+      encodeFunctionData({
+        abi: [
+          {
+            name: "transferFrom",
+            type: "function",
+            inputs: [
+              { name: "from", type: "address" },
+              { name: "to", type: "address" },
+              { name: "amount", type: "uint256" },
+            ],
+            outputs: [{ type: "bool" }],
+            stateMutability: "nonpayable",
+          },
+        ],
+        functionName: "transferFrom",
+        args: [sourceExecCore, sourceMulticallHandler, amountUsdcBigInt],
+      })
+    ),
+    // Approve SpokePool to spend USDC
+    buildCall(
+      sourceUsdc,
+      encodeFunctionData({
+        abi: [
+          {
+            name: "approve",
+            type: "function",
+            inputs: [
+              { name: "spender", type: "address" },
+              { name: "amount", type: "uint256" },
+            ],
+            outputs: [{ type: "bool" }],
+            stateMutability: "nonpayable",
+          },
+        ],
+        functionName: "approve",
+        args: [sourceSpokePool, amountUsdcBigInt],
+      })
+    ),
+    // depositV3 with depositor = MulticallHandler
+    buildCall(
+      sourceSpokePool,
+      encodeFunctionData({
+        abi: [
+          {
+            name: "depositV3",
+            type: "function",
+            inputs: [
+              { name: "depositor", type: "address" },
+              { name: "recipient", type: "address" },
+              { name: "inputToken", type: "address" },
+              { name: "outputToken", type: "address" },
+              { name: "inputAmount", type: "uint256" },
+              { name: "outputAmount", type: "uint256" },
+              { name: "destinationChainId", type: "uint256" },
+              { name: "exclusiveRelayer", type: "address" },
+              { name: "quoteTimestamp", type: "uint32" },
+              { name: "fillDeadline", type: "uint32" },
+              { name: "exclusivityDeadline", type: "uint32" },
+              { name: "message", type: "bytes" },
+            ],
+            outputs: [],
+            stateMutability: "payable",
+          },
+        ],
+        functionName: "depositV3",
+        args: [
+          sourceMulticallHandler, // depositor = MulticallHandler
+          destMulticallHandler,
+          sourceUsdc, // inputToken
+          destUsdc, // outputToken
+          amountUsdcBigInt, // inputAmount
+          amountUsdcBigInt, // outputAmount
+          BigInt(targetChainId), // destinationChainId
+          "0x0000000000000000000000000000000000000000",
+          Math.floor(Date.now() / 1000), // quoteTimestamp
+          Math.floor(Date.now() / 1000) + 4 * 3600, // fillDeadline
+          0, // exclusivityDeadline
+          refuelMessage, // message
+        ],
+      })
+    ),
+    // mintFor
+    mintCall,
+  ];
+
+  const message = buildMulticallMessage(calls, initiator);
+
+  const data = encodeFunctionData({
+    abi: [
+      {
+        name: "handleMessage",
+        type: "function",
+        inputs: [
+          { name: "token", type: "address" },
+          { name: "message", type: "bytes" },
+        ],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
+    ],
+    functionName: "handleMessage",
+    args: [sourceUsdc, message],
+  });
+
   return {
-    target: isCrossChain ? sourceSpokePool : sourceMulticallHandler,
+    target: sourceMulticallHandler,
     data,
   };
 }

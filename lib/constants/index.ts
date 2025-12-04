@@ -1,10 +1,6 @@
 import { baseSepolia, optimismSepolia } from "wagmi/chains";
 import { Address } from "viem";
 
-export const DEFAULT_CHAIN_ID = Number(
-  process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID ?? "84532"
-);
-
 export const REFERRER_ADDRESS = process.env.NEXT_PUBLIC_REFERRER_ADDRESS ?? "";
 
 export const FEE_POOL_ADDRESS = (process.env.NEXT_PUBLIC_FEE_POOL_ADDRESS ??

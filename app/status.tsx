@@ -4,13 +4,15 @@ import { useRouter } from "next/navigation";
 
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
-import { Timer, CircleCheck } from "lucide-react";
+import { Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PingDot from "@/components/ping-dot";
 import { useLastRefuelTaskIdStore } from "@/stores/lastRefuelId";
 import { getTaskExpirationTime } from "@exec402/core";
 import { useTask } from "@exec402/react";
+import SuccessIcon from "@/components/succuess-icon";
+
 function CountDown({ ts }: { ts: number }) {
   const [seconds, setSeconds] = useState(
     Math.round(ts - new Date().getTime() / 1000)
@@ -34,7 +36,7 @@ export default function Status({ id }: { id: string }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (task?.status === "Executed" || task?.status === "Expired") {
+    if (task?.status === "Expired") {
       setTimeout(() => {
         setLastRefuelTaskId("");
       }, 1500);
@@ -42,7 +44,7 @@ export default function Status({ id }: { id: string }) {
   }, [task, setLastRefuelTaskId]);
 
   const expirationTime = useMemo(
-    () => (task ? getTaskExpirationTime(task) : 0),
+    () => (task?.status === "Pending" ? getTaskExpirationTime(task) : 0),
     [task]
   );
 
@@ -79,14 +81,16 @@ export default function Status({ id }: { id: string }) {
           </>
         ) : task.status === "Executed" ? (
           <>
-            <CircleCheck className="size-12 text-muted-foreground" />
+            <SuccessIcon />
             <div className="text-center">
               <p className="text-2xl font-semibold">Success</p>
               <span className="text-muted-foreground">
                 Refuel task executed.
               </span>
             </div>
-            <Button onClick={onBack}>Refuel another</Button>
+            <Button onClick={onBack} variant="secondary">
+              Refuel another
+            </Button>
           </>
         ) : (
           <>

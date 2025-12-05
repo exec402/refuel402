@@ -65,6 +65,6 @@ export function useAutoCallTaskFee({
   const { data: txFeeEth } = useMockCallTxFeeEth({ target, data });
 
   return useMemo(() => {
-    return ethPrice && txFeeEth ? txFeeEth * ethPrice * 1.5 : undefined;
+    return ethPrice && txFeeEth ? txFeeEth * ethPrice * 2 : undefined;
   }, [ethPrice, txFeeEth]);
 }

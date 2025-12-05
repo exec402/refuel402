@@ -9,8 +9,8 @@ export const useTaskFeeStore = create<{
 }>()(
   persist(
     (set, get) => ({
-      taskFee: "auto",
-      isAutoTaskFee: false,
+      taskFee: "0.3",
+      isAutoTaskFee: true,
       setTaskFee: (fee: string) => set({ taskFee: fee }),
       toggleIsAutoTaskFee: () => set({ isAutoTaskFee: !get().isAutoTaskFee }),
     }),

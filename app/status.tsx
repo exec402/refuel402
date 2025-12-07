@@ -30,7 +30,9 @@ function CountDown({ ts }: { ts: number }) {
 }
 
 export default function Status({ id }: { id: string }) {
-  const { data: task } = useTask(id);
+  const { data: task } = useTask(id, {
+    refetchInterval: 3000,
+  });
   const { setLastRefuelTaskId } = useLastRefuelTaskIdStore();
   const router = useRouter();
 
@@ -38,8 +40,6 @@ export default function Status({ id }: { id: string }) {
     task?.status === "Pending" ? (id as `0x${string}`) : undefined,
     { pollingInterval: 2000 }
   );
-
-  console.log('isExecuted', isExecuted);
 
   const expirationTime = useMemo(
     () => (task?.status === "Pending" ? getTaskExpirationTime(task) : 0),

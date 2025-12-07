@@ -1,5 +1,3 @@
-import "server only";
-
 import { baseSepolia, optimismSepolia, base } from "wagmi/chains";
 
 const alchemyKey = process.env.ALCHEMY_KEY;

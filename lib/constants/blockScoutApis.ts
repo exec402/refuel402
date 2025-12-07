@@ -1,5 +1,3 @@
-import "server only";
-
 import { baseSepolia, optimismSepolia, base } from "wagmi/chains";
 
 export const blockScoutApis: Record<number, string> = {

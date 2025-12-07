@@ -1,4 +1,4 @@
-import { baseSepolia, optimismSepolia, base } from "wagmi/chains";
+import { baseSepolia, optimismSepolia, base, bscTestnet } from "wagmi/chains";
 import type { Chain } from "viem";
 
 export const NETWORK = process.env.NEXT_PUBLIC_NETWORK ?? "testnet";
@@ -8,7 +8,9 @@ export const DEFAULT_CHAIN_ID = Number(
 );
 
 export const SUPPORTED_CHAINS =
-  NETWORK === "mainnet" ? ([base] as const) : ([baseSepolia, optimismSepolia] as const);
+  NETWORK === "mainnet"
+    ? ([base] as const)
+    : ([baseSepolia, optimismSepolia, bscTestnet] as const);
 
 export const CHAIN_MAP: Record<number, Chain> = Object.fromEntries(
   SUPPORTED_CHAINS.map((chain) => [chain.id, chain])

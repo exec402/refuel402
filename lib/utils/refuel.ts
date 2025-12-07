@@ -1,12 +1,7 @@
 import { buildCall, buildMulticallMessage } from "@/lib/execCore";
 import { encodeFunctionData, parseUnits, type Address } from "viem";
-import {
-  DEFAULT_CHAIN_ID,
-  ethUsdcPoolFees,
-  MINTER_ADDRESS,
-} from "@/lib/constants";
+import { ethUsdcPoolFees } from "@/lib/constants";
 import { getChainConfig } from "@exec402/core";
-import { minterAbi } from "@/lib/abis/minterAbi";
 
 type Call = ReturnType<typeof buildCall>;
 
@@ -245,17 +240,18 @@ export function getRefuelData(
   const isCrossChain = targetChainId !== sourceChainId;
 
   // Build mint call if from DEFAULT_CHAIN_ID
-  const mintCall =
-    sourceChainId === DEFAULT_CHAIN_ID
-      ? buildCall(
-          MINTER_ADDRESS,
-          encodeFunctionData({
-            abi: minterAbi,
-            functionName: "mintFor",
-            args: [initiator],
-          })
-        )
-      : null;
+  // const mintCall =
+  //   sourceChainId === DEFAULT_CHAIN_ID
+  //     ? buildCall(
+  //         MINTER_ADDRESS,
+  //         encodeFunctionData({
+  //           abi: minterAbi,
+  //           functionName: "mintFor",
+  //           args: [initiator],
+  //         })
+  //       )
+  //     : null;
+  const mintCall = null;
 
   if (!isCrossChain) {
     const extraCalls: Call[] = mintCall ? [mintCall] : [];

@@ -1,4 +1,4 @@
-import { formatUnits, parseUnits } from "viem";
+import { formatUnits } from "viem";
 
 function getFormatterRule(input: number) {
   const rules = [
@@ -129,8 +129,4 @@ export function formatNumber(
 
 export function formatUsdc(amount: number | bigint | string) {
   return formatUnits(BigInt(amount), 6);
-}
-
-export function parseUsdc(amount: number | string) {
-  return parseUnits(amount.toString(), 6);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { cn, parseUsdc } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import ChainSelector from "./chain-selector";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,7 +12,7 @@ import { Loader2, Wallet, Zap, X, Settings } from "lucide-react";
 
 import { useConnectWalletModalStore } from "@/stores/connectWalletModal";
 import { useMutation } from "@tanstack/react-query";
-import { formatEther, formatUnits, isAddress } from "viem";
+import { formatEther, formatUnits, isAddress, parseUnits } from "viem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskFeeStore } from "@/stores/taskFee";
 
@@ -125,33 +125,37 @@ export default function RefuelForm() {
         throw new Error("Invalid refuel data");
       }
 
-      const description = `Refuel ${amount} USDC to ${recipients.length} ${
-        recipients.length > 1 ? "addresses" : "address"
-      }(from ${currentChain.name} to ${targetChain.name})`;
+      const description = `Refuel ${amount} ${usdc?.symbol} to ${
+        recipients.length
+      } ${recipients.length > 1 ? "addresses" : "address"}(from ${
+        currentChain.name
+      } to ${targetChain.name})`;
 
       const fee = isAutoTaskFee
         ? (autoTaskFee || 0).toString()
         : taskFee || "0";
 
       return await call({
-        amount: parseUsdc(amount.toString()).toString(),
+        amount: parseUnits(amount.toString(), usdc?.decimals ?? 6).toString(),
         target: refuelData.target,
         description,
         data: refuelData.data as `0x${string}`,
         chainId: currentChain?.id,
         referrer: REFERRER_ADDRESS as `0x${string}`,
-        fee: parseUsdc(fee).toString(),
+        fee: parseUnits(fee, usdc?.decimals ?? 6).toString(),
       }).catch((err) => {
+        console.log(err);
         if (
           err.name === "UserRejectedRequestError" ||
           err.message.includes("User rejected")
         ) {
           return;
         }
-        throw new Error(err.response.data.error ?? "Unknown error");
+        throw new Error(err.response?.data.error ?? "Unknown error");
       });
     },
     onSuccess: (data) => {
+      console.log(data);
       if (data) {
         setLastRefuelTaskId(data.taskId);
       }
@@ -163,7 +167,7 @@ export default function RefuelForm() {
   });
 
   const { data: refuelQuote } = useRefuelQuote({
-    amountUsdc: BigInt(amount * 1e6),
+    amountUsdc: BigInt(amount * 10 ** (usdc?.decimals ?? 6)),
     targetChainId: targetChain.id,
   });
 
@@ -179,9 +183,9 @@ export default function RefuelForm() {
   const insufficientBalance = useMemo(() => {
     return usdcBalance === undefined
       ? false
-      : Number(formatUnits(BigInt(usdcBalance.balance), 6)) <
+      : Number(formatUnits(BigInt(usdcBalance.balance), usdc?.decimals ?? 6)) <
           amount + (isAutoTaskFee ? autoTaskFee ?? 0 : Number(taskFee ?? 0));
-  }, [usdcBalance, amount, autoTaskFee, taskFee, isAutoTaskFee]);
+  }, [usdcBalance, amount, autoTaskFee, taskFee, isAutoTaskFee, usdc]);
 
   const isCrossChain = useMemo(() => {
     return targetChain.id !== currentChain?.id;
@@ -240,7 +244,8 @@ export default function RefuelForm() {
                   "text-red-500"
               )}
             >
-              Fee: {formatNumber(isAutoTaskFee ? autoTaskFee : taskFee)} USDC
+              Fee: {formatNumber(isAutoTaskFee ? autoTaskFee : taskFee)}{" "}
+              {usdc?.symbol}
             </span>
           )}
           <Popover onOpenChange={setSettingsOpen} open={settingsOpen}>
@@ -280,7 +285,7 @@ export default function RefuelForm() {
                         setTaskFee(e.target.value);
                       }}
                     />
-                    <span className="text-sm">USDC</span>
+                    <span className="text-sm">{usdc?.symbol}</span>
                   </div>
                   {Number(taskFee) < (autoTaskFee ?? 0) && !isAutoTaskFee && (
                     <p className="text-sm text-red-500">
@@ -321,7 +326,7 @@ export default function RefuelForm() {
                 )}
                 onClick={() => handlePickAmount(a)}
               >
-                {a} USDC
+                {a} {usdc?.symbol}
               </Button>
             ))}
           </div>

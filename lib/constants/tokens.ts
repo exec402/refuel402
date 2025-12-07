@@ -36,6 +36,7 @@ export function getUsdc(chainId: number): Token {
   return {
     ...TOKEN_ALIASES.usdc,
     address: chainConfig?.tokens.usdc ?? ("" as `0x${string}`),
+    symbol: chainConfig?.defaultAsset.name ?? TOKEN_ALIASES.usdc.symbol,
   };
 }
 

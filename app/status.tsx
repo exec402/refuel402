@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PingDot from "@/components/ping-dot";
 import { useLastRefuelTaskIdStore } from "@/stores/lastRefuelId";
 import { getTaskExpirationTime } from "@exec402/core";
-import { useTask } from "@exec402/react";
+import { useTask, useVerifyTask } from "@exec402/react";
 import SuccessIcon from "@/components/succuess-icon";
 
 function CountDown({ ts }: { ts: number }) {
@@ -30,10 +30,16 @@ function CountDown({ ts }: { ts: number }) {
 }
 
 export default function Status({ id }: { id: string }) {
-  const { data: task } = useTask(id, { refetchInterval: 1000 });
+  const { data: task } = useTask(id);
   const { setLastRefuelTaskId } = useLastRefuelTaskIdStore();
-
   const router = useRouter();
+
+  const { data: isExecuted } = useVerifyTask(
+    task?.status === "Pending" ? (id as `0x${string}`) : undefined,
+    { pollingInterval: 2000 }
+  );
+
+  console.log('isExecuted', isExecuted);
 
   const expirationTime = useMemo(
     () => (task?.status === "Pending" ? getTaskExpirationTime(task) : 0),
@@ -55,7 +61,7 @@ export default function Status({ id }: { id: string }) {
       transition={{ type: "spring", duration: 0.6 }}
     >
       <div className="flex flex-col justify-center items-center space-y-3">
-        {!task || task.status === "Pending" ? (
+        {!task || (task.status === "Pending" && !isExecuted) ? (
           <>
             <div className="size-12 flex items-center justify-center">
               <PingDot className="size-8" />
@@ -71,7 +77,7 @@ export default function Status({ id }: { id: string }) {
               )}
             </div>
           </>
-        ) : task.status === "Executed" ? (
+        ) : task.status === "Executed" || isExecuted ? (
           <>
             <SuccessIcon />
             <div className="text-center">

@@ -5,7 +5,6 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import type { Connector } from "wagmi";
 import { useConnect } from "wagmi";
-import { base } from "wagmi/chains";
 import { useConnectWalletModalStore } from "@/stores/connectWalletModal";
 
 interface Props {
@@ -53,7 +52,7 @@ const ConnectEOAButton: React.FC<ConnectEOAButtonProps> = ({
   const onConnect = useCallback(
     async (connector: Connector) => {
       await connectAsync(
-        { connector, chainId: base.id },
+        { connector },
         {
           onSuccess: () => {
             void toast.success("Connect wallet success");

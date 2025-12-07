@@ -17,15 +17,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskFeeStore } from "@/stores/taskFee";
 
 import { formatNumber } from "@/lib/utils";
-import { REFERRER_ADDRESS } from "@/lib/constants";
-
+import { REFERRER_ADDRESS, SUPPORTED_CHAINS } from "@/lib/constants";
+import { useTokenPrice } from "@exec402/react";
 import RecipientsUploader from "./recipients-uploader";
 
 import { useCall } from "@exec402/react";
 
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
-import { type Chain, baseSepolia } from "viem/chains";
+import { type Chain, bsc, bscTestnet } from "viem/chains";
 
 import { useLastRefuelTaskIdStore } from "@/stores/lastRefuelId";
 
@@ -42,7 +42,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useRefuelQuote } from "@/hooks/useRefuelQuote";
-import { useCurrentChainTokenPrice } from "@/hooks/useCurrentChainTokenPrice";
 
 type Tab = "solo" | "batch";
 
@@ -61,7 +60,7 @@ export default function RefuelForm() {
   const [soloAmount, setSoloAmount] = useState<number>(SOLO_AMOUNTS[0]);
   const [batchAmount, setBatchAmount] = useState<number>(BATCH_AMOUNTS[2]);
 
-  const [targetChain, setTargetChain] = useState<Chain>(baseSepolia);
+  const [targetChain, setTargetChain] = useState<Chain>(SUPPORTED_CHAINS[0]);
   const [recipients, setRecipients] = useState<string[]>([]);
 
   const amounts = tab === "solo" ? SOLO_AMOUNTS : BATCH_AMOUNTS;
@@ -102,19 +101,32 @@ export default function RefuelForm() {
 
   const { mutateAsync: call } = useCall();
 
-  const refuelData = useMemo(
-    () =>
-      address && currentChain
-        ? getRefuelData(
-            address,
-            amount.toString(),
-            recipients as `0x${string}`[],
-            currentChain.id,
-            targetChain.id
-          )
-        : undefined,
-    [amount, recipients, targetChain, address, currentChain]
+  const amountUsdcBigInt = useMemo(
+    () => BigInt(amount * 10 ** (usdc?.decimals ?? 6)),
+    [amount, usdc]
   );
+
+  const [refuelData, setRefuleData] = useState<{
+    target: `0x${string}`;
+    data: `0x${string}`;
+  } | null>(null);
+
+  useEffect(() => {
+    if (address && currentChain) {
+      getRefuelData(
+        address,
+        amount.toString(),
+        recipients as `0x${string}`[],
+        currentChain.id,
+        targetChain.id,
+        "0"
+      ).then((data) => {
+        if (data) {
+          setRefuleData(data);
+        }
+      });
+    }
+  }, [amount, recipients, targetChain, address, currentChain]);
 
   const { mutate: refuel, isPending: isRefueling } = useMutation({
     mutationFn: async () => {
@@ -167,11 +179,14 @@ export default function RefuelForm() {
   });
 
   const { data: refuelQuote } = useRefuelQuote({
-    amountUsdc: BigInt(amount * 10 ** (usdc?.decimals ?? 6)),
+    amountUsdc: amountUsdcBigInt,
+    amountDecimals: usdc?.decimals ?? 6,
     targetChainId: targetChain.id,
   });
 
-  const ethPrice = useCurrentChainTokenPrice();
+  const { data: targetEthPrice } = useTokenPrice({
+    chainId: targetChain.id,
+  });
 
   const usdcBalance = useTokenBalance(usdc);
 
@@ -190,6 +205,10 @@ export default function RefuelForm() {
   const isCrossChain = useMemo(() => {
     return targetChain.id !== currentChain?.id;
   }, [targetChain, currentChain]);
+
+  const feeWarning = useMemo(() => {
+    return Number(taskFee) < (autoTaskFee ?? 0) && !isAutoTaskFee;
+  }, [taskFee, autoTaskFee, isAutoTaskFee]);
 
   return (
     <motion.div
@@ -287,7 +306,7 @@ export default function RefuelForm() {
                     />
                     <span className="text-sm">{usdc?.symbol}</span>
                   </div>
-                  {Number(taskFee) < (autoTaskFee ?? 0) && !isAutoTaskFee && (
+                  {feeWarning && (
                     <p className="text-sm text-red-500">
                       Tasks with low fees may not get executed.
                     </p>
@@ -402,13 +421,20 @@ export default function RefuelForm() {
                 <div className="max-w-[calc(100vw-10rem)]">
                   You&apos;ll get:{" "}
                   <span className="text-foreground">
-                    {formatNumber(formatEther(refuelQuote))} ETH
+                    {formatNumber(formatEther(refuelQuote))}{" "}
+                    {targetChain.id === bsc.id ||
+                    targetChain.id === bscTestnet.id
+                      ? "BNB"
+                      : "ETH"}
                   </span>
-                  {ethPrice && (
+                  {targetEthPrice?.price && (
                     <span className="ml-1 text-muted-foreground/60">
                       ($
                       {formatNumber(
-                        (Number(formatEther(refuelQuote)) * ethPrice).toFixed(3)
+                        (
+                          Number(formatEther(refuelQuote)) *
+                          targetEthPrice.price
+                        ).toFixed(3)
                       )}
                       )
                     </span>

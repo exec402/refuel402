@@ -35,7 +35,7 @@ function TokenRow({
         <TokenIcon token={balance.token} />
         <div className="flex flex-col ml-3 max-w-1/3">
           <span className="font-medium text-sm truncate">
-            {balance.token.symbol}dasdasdasdasdasdasdasdsadasdas
+            {balance.token.symbol}
           </span>
           <span className="text-xs text-muted-foreground truncate">
             {balance.balance

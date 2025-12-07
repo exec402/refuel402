@@ -13,7 +13,7 @@ import { ETH, getDefaultTokenList } from "@/lib/constants/tokens";
 
 import { isSameAddress } from "@/lib/utils/common";
 
-export function useTokenBalances() {
+export function useTokenBalances({ chainId }: { chainId?: number } = {}) {
   const { address } = useAccount();
   const currentChain = useCurrentChain();
 
@@ -25,7 +25,9 @@ export function useTokenBalances() {
     queryKey: ["token-balances", address, currentChain?.id],
     queryFn: async () => {
       const res = await fetch(
-        `/api/token-balances?address=${address}&chainId=${currentChain?.id}`
+        `/api/token-balances?address=${address}&chainId=${
+          chainId ?? currentChain?.id
+        }`
       );
       const data = (await res.json()) as { data: RawTokenBalance[] };
 
@@ -57,12 +59,14 @@ export function useTokenBalances() {
 }
 
 export function useTokenBalance(
-  token: Token | NativeToken | undefined
+  token: Token | NativeToken | undefined,
+  chainId?: number
 ): TokenBalance | NativeTokenBalance | undefined {
   const { address } = useAccount();
   const { data: balances } = useTokenBalances();
   const { data: nativeBalance } = useBalance({
     address,
+    chainId,
     query: {
       enabled: !!address,
       refetchInterval: 5000,

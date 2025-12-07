@@ -20,7 +20,7 @@ export function useMockCallTxFeeEth({
     : undefined;
   const execCoreAddress = chainConfig?.contracts.execCore;
 
-  const fallbackTxFee = 0.0000004;
+  const fallbackTxFee = currentChain?.id === 56 ? 0.000007 : 0.0000006;
 
   return useQuery({
     queryKey: ["txFee", target, data, execCoreAddress],
@@ -65,6 +65,6 @@ export function useAutoCallTaskFee({
   const { data: txFeeEth } = useMockCallTxFeeEth({ target, data });
 
   return useMemo(() => {
-    return ethPrice && txFeeEth ? txFeeEth * ethPrice * 2 : undefined;
+    return ethPrice && txFeeEth ? txFeeEth * ethPrice * 3 : undefined;
   }, [ethPrice, txFeeEth]);
 }

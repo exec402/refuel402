@@ -360,21 +360,21 @@
     ethereum-cryptography "^2.0.0"
     micro-ftch "^0.3.1"
 
-"@exec402/core@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@exec402/core/-/core-0.4.0.tgz#2cd7daa8d325d303592f3cf7bd200cc1b45aba30"
-  integrity sha512-shI1vQO03fJG2RxaMd6wjIyVlXpX4noyAbafzGzcY6Sslhm3cWOfo2k39zcQNayUblYyuLxw9bAAwSA3IihqNQ==
+"@exec402/core@^0.6.1":
+  version "0.6.1"
+  resolved "https://registry.yarnpkg.com/@exec402/core/-/core-0.6.1.tgz#551ada1d248971e9eba79a23381424ca7550b410"
+  integrity sha512-6lOx/D+MyBMjDfYMKagvNSOOY2QTllJS+kAG4/Nd6ZTRpxhMdoi2WZN+W/KpLm88+ue+WnEF2LOod1lxiOJUxw==
   dependencies:
     axios "^1.11.0"
     x402 "^0.7.3"
     zod "^3.24.2"
 
-"@exec402/react@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@exec402/react/-/react-0.4.0.tgz#5cb4c94b0fbc5af2d450fff82b53959a8a2233fd"
-  integrity sha512-y/ijjL6PTsMmdUkpuHSuqDGWUHk1CwTwj0e+mT1L8Kx7tytW81qKLyA6xCy21fg5cQBGknVEkADzA5kNz5olkQ==
+"@exec402/react@^0.6.1":
+  version "0.6.1"
+  resolved "https://registry.yarnpkg.com/@exec402/react/-/react-0.6.1.tgz#691c15d44c8c83a1e40476dcdf254513e9fff0a3"
+  integrity sha512-k5M8OgjMXy3BK/9yjN/IH2aHTAuO/72fI2YA1AswxSvATJBi2YH0NX5UxB6g40K8Mt5P08sXI8ecnBie314rHQ==
   dependencies:
-    "@exec402/core" "^0.4.0"
+    "@exec402/core" "^0.6.1"
 
 "@floating-ui/core@^1.7.3":
   version "1.7.3"

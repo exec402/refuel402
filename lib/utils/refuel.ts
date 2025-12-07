@@ -1,9 +1,21 @@
-import { buildCall, buildMulticallMessage } from "@/lib/execCore";
+import {
+  buildApproveCall,
+  buildTransferFromCall,
+  buildUniswapV3SwapCall,
+  buildMakeCallWithBalanceCall,
+  buildDistributeTokenEvenlyCall,
+  buildMulticallMessage,
+  buildDepositV3Call,
+  type Call,
+} from "@exec402/core";
 import { encodeFunctionData, parseUnits, type Address } from "viem";
-import { ethUsdcPoolFees } from "@/lib/constants";
-import { getChainConfig } from "@exec402/core";
-
-type Call = ReturnType<typeof buildCall>;
+import { ethUsdcPoolFees, NETWORK } from "@/lib/constants";
+import {
+  getChainConfig,
+  getAcrossQuote,
+  type AcrossQuote,
+  type ExecNetwork,
+} from "@exec402/core";
 
 export function buildRefuelMessage(
   initiator: Address,
@@ -12,7 +24,8 @@ export function buildRefuelMessage(
   sourceChainId: number,
   targetChainId: number,
   minEthOut = "0",
-  extraCalls: Call[] = []
+  extraCalls: Call[] = [],
+  amountUsdcOverride?: bigint
 ) {
   const targetChainConfig = getChainConfig(targetChainId);
   if (!targetChainConfig) {
@@ -23,7 +36,10 @@ export function buildRefuelMessage(
   const { swapRouter, multicallHandler, execCore } =
     targetChainConfig.contracts;
 
-  const amountUsdcBigInt = parseUnits(amountUsdc, 6);
+  const amountUsdcBigInt =
+    amountUsdcOverride !== undefined
+      ? amountUsdcOverride
+      : parseUnits(amountUsdc, 6);
   const minEthOutBigInt = parseUnits(minEthOut, 18);
 
   const poolFee = ethUsdcPoolFees[targetChainId];
@@ -34,94 +50,36 @@ export function buildRefuelMessage(
 
   if (!isCrossChain) {
     calls.push(
-      buildCall(
-        usdc,
-        encodeFunctionData({
-          abi: [
-            {
-              name: "transferFrom",
-              type: "function",
-              inputs: [
-                { name: "from", type: "address" },
-                { name: "to", type: "address" },
-                { name: "amount", type: "uint256" },
-              ],
-              outputs: [{ name: "", type: "bool" }],
-              stateMutability: "nonpayable",
-            },
-          ],
-          functionName: "transferFrom",
-          args: [execCore, multicallHandler, amountUsdcBigInt],
-        })
-      )
+      buildTransferFromCall({
+        token: usdc,
+        from: execCore,
+        to: multicallHandler,
+        amount: amountUsdcBigInt,
+      })
     );
   }
 
   // Call 0: Approve USDC to SwapRouter
   calls.push(
-    buildCall(
-      usdc,
-      encodeFunctionData({
-        abi: [
-          {
-            name: "approve",
-            type: "function",
-            inputs: [
-              { name: "spender", type: "address" },
-              { name: "amount", type: "uint256" },
-            ],
-            outputs: [{ name: "", type: "bool" }],
-            stateMutability: "nonpayable",
-          },
-        ],
-        functionName: "approve",
-        args: [swapRouter, BigInt(2) ** BigInt(256) - BigInt(1)], // type(uint256).max
-      })
-    )
+    buildApproveCall({
+      token: usdc,
+      spender: swapRouter,
+      amount: BigInt(2) ** BigInt(256) - BigInt(1),
+    })
   );
 
   // Call 1: Swap USDC → WETH
   calls.push(
-    buildCall(
-      swapRouter,
-      encodeFunctionData({
-        abi: [
-          {
-            name: "exactInputSingle",
-            type: "function",
-            inputs: [
-              {
-                name: "params",
-                type: "tuple",
-                components: [
-                  { name: "tokenIn", type: "address" },
-                  { name: "tokenOut", type: "address" },
-                  { name: "fee", type: "uint24" },
-                  { name: "recipient", type: "address" },
-                  { name: "amountIn", type: "uint256" },
-                  { name: "amountOutMinimum", type: "uint256" },
-                  { name: "sqrtPriceLimitX96", type: "uint160" },
-                ],
-              },
-            ],
-            outputs: [{ name: "amountOut", type: "uint256" }],
-            stateMutability: "payable",
-          },
-        ],
-        functionName: "exactInputSingle",
-        args: [
-          {
-            tokenIn: usdc,
-            tokenOut: weth,
-            fee: poolFee,
-            recipient: multicallHandler,
-            amountIn: amountUsdcBigInt,
-            amountOutMinimum: minEthOutBigInt,
-            sqrtPriceLimitX96: BigInt(0),
-          },
-        ],
-      })
-    )
+    buildUniswapV3SwapCall({
+      router: swapRouter,
+      tokenIn: usdc,
+      tokenOut: weth,
+      fee: poolFee,
+      recipient: multicallHandler,
+      amountIn: amountUsdcBigInt,
+      amountOutMinimum: minEthOutBigInt,
+      sqrtPriceLimitX96: BigInt(0),
+    })
   );
 
   // Call 2: Unwrap WETH → ETH
@@ -147,61 +105,23 @@ export function buildRefuelMessage(
   ];
 
   calls.push(
-    buildCall(
+    buildMakeCallWithBalanceCall({
       multicallHandler,
-      encodeFunctionData({
-        abi: [
-          {
-            name: "makeCallWithBalance",
-            type: "function",
-            inputs: [
-              { name: "target", type: "address" },
-              { name: "callData", type: "bytes" },
-              { name: "value", type: "uint256" },
-              {
-                name: "replacement",
-                type: "tuple[]",
-                components: [
-                  { name: "token", type: "address" },
-                  { name: "offset", type: "uint256" },
-                ],
-              },
-            ],
-            outputs: [],
-            stateMutability: "nonpayable",
-          },
-        ],
-        functionName: "makeCallWithBalance",
-        args: [weth, withdrawCalldata, BigInt(0), replacements],
-      })
-    )
+      target: weth,
+      callData: withdrawCalldata,
+      value: BigInt(0),
+      replacements,
+    })
   );
 
   // Call 3: Distribute ETH evenly to all recipients
   // Uses distributeTokenEvenly because we don't know the exact ETH amount in advance
   calls.push(
-    buildCall(
+    buildDistributeTokenEvenlyCall({
       multicallHandler,
-      encodeFunctionData({
-        abi: [
-          {
-            name: "distributeTokenEvenly",
-            type: "function",
-            inputs: [
-              { name: "token", type: "address" },
-              { name: "recipients", type: "address[]" },
-            ],
-            outputs: [],
-            stateMutability: "nonpayable",
-          },
-        ],
-        functionName: "distributeTokenEvenly",
-        args: [
-          "0x0000000000000000000000000000000000000000", // address(0) for ETH
-          recipients,
-        ],
-      })
-    )
+      token: "0x0000000000000000000000000000000000000000",
+      recipients,
+    })
   );
 
   // Add extra calls (e.g., mint call for same-chain refuel)
@@ -212,7 +132,7 @@ export function buildRefuelMessage(
   return message;
 }
 
-export function getRefuelData(
+export async function getRefuelData(
   initiator: Address,
   amountUsdc: string,
   recipients: Address[],
@@ -225,6 +145,7 @@ export function getRefuelData(
     return undefined;
   }
   const sourceUsdc = sourceChainConfig.tokens.usdc;
+  const sourceDecimals = sourceChainConfig.defaultAsset.decimals;
   const sourceMulticallHandler = sourceChainConfig.contracts.multicallHandler;
   const sourceExecCore = sourceChainConfig.contracts.execCore;
   const sourceSpokePool = sourceChainConfig.contracts.spokePool;
@@ -288,17 +209,56 @@ export function getRefuelData(
     };
   }
 
+  const amountUsdcBigInt = parseUnits(amountUsdc, sourceDecimals);
+
   // For cross-chain refuel
+  // Across will send `outputAmount` (after fees) to the destination.
+  // We must swap exactly that amount, otherwise the swap will revert
+  // due to insufficient balance on the MulticallHandler.
+
+  let acrossQuote: AcrossQuote | null = null;
+  if (isCrossChain) {
+    acrossQuote = await getAcrossQuote({
+      amount: amountUsdcBigInt,
+      inputToken: sourceUsdc,
+      outputToken: destUsdc,
+      sourceChainId,
+      targetChainId,
+      network: NETWORK as ExecNetwork,
+    });
+  }
+
+  const usdcForSwap =
+    acrossQuote && acrossQuote.outputAmount > BigInt(0)
+      ? acrossQuote.outputAmount
+      : amountUsdcBigInt;
+
   const refuelMessage = buildRefuelMessage(
     initiator,
     amountUsdc,
     recipients,
     sourceChainId,
     targetChainId,
-    minEthOut
+    minEthOut,
+    [],
+    usdcForSwap
   );
 
-  const amountUsdcBigInt = parseUnits(amountUsdc, 6);
+  const outputAmount = acrossQuote
+    ? acrossQuote.outputAmount
+    : amountUsdcBigInt;
+  const quoteTimestamp = acrossQuote
+    ? acrossQuote.quoteTimestamp
+    : Math.floor(Date.now() / 1000);
+
+  const fillDeadline = acrossQuote
+    ? acrossQuote.fillDeadline
+    : Math.floor(Date.now() / 1000) + 4 * 3600;
+
+  const exclusivityDeadline = acrossQuote ? acrossQuote.exclusivityDeadline : 0;
+  const exclusiveRelayer = acrossQuote
+    ? acrossQuote.exclusiveRelayer
+    : "0x0000000000000000000000000000000000000000";
 
   // If no mint needed, call depositV3 directly (depositor = ExecCore)
   if (!mintCall) {
@@ -332,12 +292,12 @@ export function getRefuelData(
         sourceUsdc, // inputToken
         destUsdc, // outputToken
         amountUsdcBigInt, // inputAmount
-        amountUsdcBigInt, // outputAmount
+        outputAmount, // outputAmount
         BigInt(targetChainId), // destinationChainId
-        "0x0000000000000000000000000000000000000000",
-        Math.floor(Date.now() / 1000), // quoteTimestamp
-        Math.floor(Date.now() / 1000) + 4 * 3600, // fillDeadline
-        0, // exclusivityDeadline
+        exclusiveRelayer,
+        quoteTimestamp, // quoteTimestamp
+        fillDeadline, // fillDeadline
+        exclusivityDeadline, // exclusivityDeadline
         refuelMessage, // message
       ],
     });
@@ -355,89 +315,36 @@ export function getRefuelData(
   // 4. mintFor
   const calls: Call[] = [
     // Transfer USDC from ExecCore to MulticallHandler
-    buildCall(
-      sourceUsdc,
-      encodeFunctionData({
-        abi: [
-          {
-            name: "transferFrom",
-            type: "function",
-            inputs: [
-              { name: "from", type: "address" },
-              { name: "to", type: "address" },
-              { name: "amount", type: "uint256" },
-            ],
-            outputs: [{ type: "bool" }],
-            stateMutability: "nonpayable",
-          },
-        ],
-        functionName: "transferFrom",
-        args: [sourceExecCore, sourceMulticallHandler, amountUsdcBigInt],
-      })
-    ),
+    buildTransferFromCall({
+      token: sourceUsdc,
+      from: sourceExecCore,
+      to: sourceMulticallHandler,
+      amount: amountUsdcBigInt,
+    }),
+
     // Approve SpokePool to spend USDC
-    buildCall(
-      sourceUsdc,
-      encodeFunctionData({
-        abi: [
-          {
-            name: "approve",
-            type: "function",
-            inputs: [
-              { name: "spender", type: "address" },
-              { name: "amount", type: "uint256" },
-            ],
-            outputs: [{ type: "bool" }],
-            stateMutability: "nonpayable",
-          },
-        ],
-        functionName: "approve",
-        args: [sourceSpokePool, amountUsdcBigInt],
-      })
-    ),
+    buildApproveCall({
+      token: sourceUsdc,
+      spender: sourceSpokePool,
+      amount: amountUsdcBigInt,
+    }),
     // depositV3 with depositor = MulticallHandler
-    buildCall(
-      sourceSpokePool,
-      encodeFunctionData({
-        abi: [
-          {
-            name: "depositV3",
-            type: "function",
-            inputs: [
-              { name: "depositor", type: "address" },
-              { name: "recipient", type: "address" },
-              { name: "inputToken", type: "address" },
-              { name: "outputToken", type: "address" },
-              { name: "inputAmount", type: "uint256" },
-              { name: "outputAmount", type: "uint256" },
-              { name: "destinationChainId", type: "uint256" },
-              { name: "exclusiveRelayer", type: "address" },
-              { name: "quoteTimestamp", type: "uint32" },
-              { name: "fillDeadline", type: "uint32" },
-              { name: "exclusivityDeadline", type: "uint32" },
-              { name: "message", type: "bytes" },
-            ],
-            outputs: [],
-            stateMutability: "payable",
-          },
-        ],
-        functionName: "depositV3",
-        args: [
-          sourceMulticallHandler, // depositor = MulticallHandler
-          destMulticallHandler,
-          sourceUsdc, // inputToken
-          destUsdc, // outputToken
-          amountUsdcBigInt, // inputAmount
-          amountUsdcBigInt, // outputAmount
-          BigInt(targetChainId), // destinationChainId
-          "0x0000000000000000000000000000000000000000",
-          Math.floor(Date.now() / 1000), // quoteTimestamp
-          Math.floor(Date.now() / 1000) + 4 * 3600, // fillDeadline
-          0, // exclusivityDeadline
-          refuelMessage, // message
-        ],
-      })
-    ),
+    buildDepositV3Call({
+      spokePool: sourceSpokePool,
+      depositor: sourceSpokePool,
+      recipient: sourceMulticallHandler,
+      inputToken: sourceUsdc,
+      outputToken: destUsdc,
+      inputAmount: amountUsdcBigInt,
+      outputAmount,
+      destinationChainId: BigInt(targetChainId),
+      exclusiveRelayer,
+      quoteTimestamp, // quoteTimestamp
+      fillDeadline, // fillDeadline,
+      exclusivityDeadline,
+      message: refuelMessage,
+    }),
+
     // mintFor
     mintCall,
   ];

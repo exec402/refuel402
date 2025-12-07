@@ -33,9 +33,11 @@ function TokenRow({
     >
       <div className="flex items-center">
         <TokenIcon token={balance.token} />
-        <div className="flex flex-col ml-3">
-          <span className="font-medium text-sm">{balance.token.symbol}</span>
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-col ml-3 max-w-1/3">
+          <span className="font-medium text-sm truncate">
+            {balance.token.symbol}dasdasdasdasdasdasdasdsadasdas
+          </span>
+          <span className="text-xs text-muted-foreground truncate">
             {balance.balance
               ? formatNumber(
                   formatUnits(BigInt(balance.balance), balance.token.decimals)
@@ -77,7 +79,11 @@ export default function TokensContent({
   }, [balances]);
 
   // Batch fetch all token prices
-  const { prices, ethPrice, isLoading: isPricesLoading } = useTokenPrices(tokenAddresses);
+  const {
+    prices,
+    ethPrice,
+    isLoading: isPricesLoading,
+  } = useTokenPrices(tokenAddresses);
 
   // Calculate total portfolio value
   const totalValue = useMemo(() => {
@@ -85,7 +91,8 @@ export default function TokensContent({
 
     // Native token (ETH)
     if (nativeBalance?.balance && ethPrice) {
-      total += Number(formatUnits(BigInt(nativeBalance.balance), 18)) * ethPrice;
+      total +=
+        Number(formatUnits(BigInt(nativeBalance.balance), 18)) * ethPrice;
     }
 
     // ERC20 tokens
@@ -94,7 +101,10 @@ export default function TokensContent({
         const addr = (balance.token as Token).address.toLowerCase();
         const price = prices[addr];
         if (price && balance.balance) {
-          total += Number(formatUnits(BigInt(balance.balance), balance.token.decimals)) * price;
+          total +=
+            Number(
+              formatUnits(BigInt(balance.balance), balance.token.decimals)
+            ) * price;
         }
       }
     }
@@ -108,7 +118,9 @@ export default function TokensContent({
         {isPricesLoading ? (
           <Skeleton className="h-8 w-24" />
         ) : (
-          <span className="text-2xl font-bold">${formatNumber(totalValue)}</span>
+          <span className="text-2xl font-bold">
+            ${formatNumber(totalValue)}
+          </span>
         )}
       </div>
       <div className="grid grid-cols-2 gap-4 mt-4 px-4">
@@ -150,6 +162,7 @@ export default function TokensContent({
               <TokenRow
                 key={(balance.token as Token).address}
                 balance={balance}
+                onClick={() => onSend(balance.token)}
                 price={prices[(balance.token as Token).address.toLowerCase()]}
               />
             ))}

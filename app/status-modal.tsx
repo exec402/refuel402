@@ -59,7 +59,7 @@ export default function StatusModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent showCloseButton={false} className="w-sm">
+      <DialogContent showCloseButton={false} className="w-sm outline-none">
         <DialogTitle className="sr-only">Task Status</DialogTitle>
         <DialogDescription className="sr-only">
           Refuel task status

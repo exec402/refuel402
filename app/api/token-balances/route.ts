@@ -1,5 +1,6 @@
 import { alchemyApis } from "@/lib/constants/alchemyApi";
 import { blockScoutApis } from "@/lib/constants/blockScoutApis";
+import { getDefaultTokenList } from "@/lib/constants/tokens";
 import { NextRequest, NextResponse } from "next/server";
 
 interface AlchemyTokenBalance {
@@ -43,10 +44,11 @@ export async function GET(req: NextRequest) {
       throw new Error("Missing parameter(s)");
     }
 
-    const alchemyApi = alchemyApis[Number(chainId)];
-    const blockScoutApi = blockScoutApis[Number(chainId)];
+    const numericChainId = Number(chainId);
+    const alchemyApi = alchemyApis[numericChainId];
+    const blockScoutApi = blockScoutApis[numericChainId];
 
-    if (!alchemyApi || !blockScoutApi) {
+    if (!alchemyApi) {
       throw new Error("Unsupported chain");
     }
 
@@ -72,19 +74,67 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const tokenInfoPromises = nonZeroBalances.map((t) =>
-      fetch(`${blockScoutApi}/tokens/${t.contractAddress}`, {
-        cache: "no-store",
-      }).then((res) => res.json() as Promise<BlockScoutToken>)
-    );
+    let data;
 
-    const tokenInfos = await Promise.all(tokenInfoPromises);
+    if (blockScoutApi) {
+      const tokenInfoPromises = nonZeroBalances.map((t) =>
+        fetch(`${blockScoutApi}/tokens/${t.contractAddress}`, {
+          cache: "no-store",
+        }).then((res) => res.json() as Promise<BlockScoutToken>)
+      );
 
-    const data = nonZeroBalances.map((balance, index) => ({
-      token: tokenInfos[index],
-      token_id: null,
-      value: BigInt(balance.tokenBalance).toString(),
-    }));
+      const tokenInfos = await Promise.all(tokenInfoPromises);
+
+      data = nonZeroBalances.map((balance, index) => ({
+        token: tokenInfos[index],
+        token_id: null,
+        value: BigInt(balance.tokenBalance).toString(),
+      }));
+    } else {
+      const defaultTokens = getDefaultTokenList(numericChainId);
+
+      data = nonZeroBalances
+        .map((balance) => {
+          const token = defaultTokens.find(
+            (t) =>
+              t.address.toLowerCase() ===
+              balance.contractAddress.toLowerCase()
+          );
+
+          if (!token) {
+            return null;
+          }
+
+          const synthesizedToken: BlockScoutToken = {
+            address_hash: token.address,
+            circulating_market_cap: null,
+            decimals: token.decimals.toString(),
+            exchange_rate: null,
+            holders_count: "0",
+            icon_url: token.logoUri,
+            name: token.name,
+            symbol: token.symbol,
+            total_supply: "0",
+            type: "ERC-20",
+            volume_24h: null,
+          };
+
+          return {
+            token: synthesizedToken,
+            token_id: null,
+            value: BigInt(balance.tokenBalance).toString(),
+          };
+        })
+        .filter(
+          (
+            x
+          ): x is {
+            token: BlockScoutToken;
+            token_id: null;
+            value: string;
+          } => x !== null
+        );
+    }
 
     return NextResponse.json({
       success: true,

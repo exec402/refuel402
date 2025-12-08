@@ -1,14 +1,6 @@
 import type { Token, NativeToken } from "@/types/token";
 import { getChainConfig } from "@exec402/core";
 
-export const EXEC: Token = {
-  name: "Exec402 Token",
-  symbol: "EXEC",
-  decimals: 18,
-  address: "0xa65735da8313f7e6E2F6D79A70Bf77AD39C88D42",
-  logoUri: "/icons/tokens/exec.png",
-};
-
 export const TOKEN_ALIASES = {
   usdc: {
     name: "USD Coin",
@@ -54,7 +46,6 @@ export function getDefaultTokenList(chainId: number): Token[] {
   if (!chainConfig) return [];
 
   return [
-    EXEC,
     { ...TOKEN_ALIASES.usdc, address: chainConfig.tokens.usdc },
     { ...TOKEN_ALIASES.weth, address: chainConfig.tokens.weth },
   ];

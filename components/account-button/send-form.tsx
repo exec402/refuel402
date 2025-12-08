@@ -51,7 +51,6 @@ function TokenSelect({
     },
   });
 
-  // Combine ETH with ERC20 tokens
   const allBalances: (TokenBalance | NativeTokenBalance)[] = [];
 
   if (nativeBalance) {

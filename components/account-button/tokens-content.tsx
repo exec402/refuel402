@@ -33,7 +33,7 @@ function TokenRow({
     >
       <div className="flex items-center">
         <TokenIcon token={balance.token} />
-        <div className="flex flex-col ml-3 max-w-1/3">
+        <div className="flex flex-col ml-3 max-w-[200px]">
           <span className="font-medium text-sm truncate">
             {balance.token.symbol}
           </span>
@@ -72,30 +72,51 @@ export default function TokensContent({
   const { data: balances } = useTokenBalances();
   const nativeBalance = useTokenBalance(ETH);
 
-  // Collect all token addresses
   const tokenAddresses = useMemo(() => {
     if (!balances) return [];
     return balances.map((b) => (b.token as Token).address);
   }, [balances]);
 
-  // Batch fetch all token prices
   const {
     prices,
     ethPrice,
     isLoading: isPricesLoading,
   } = useTokenPrices(tokenAddresses);
 
-  // Calculate total portfolio value
+  const sortedBalances = useMemo(() => {
+    if (!balances) return [];
+
+    return [...balances].sort((a, b) => {
+      const addrA = (a.token as Token).address.toLowerCase();
+      const addrB = (b.token as Token).address.toLowerCase();
+      const priceA = prices[addrA] ?? 0;
+      const priceB = prices[addrB] ?? 0;
+
+      const valueA =
+        priceA && a.balance
+          ? Number(
+              formatUnits(BigInt(a.balance), a.token.decimals)
+            ) * priceA
+          : 0;
+      const valueB =
+        priceB && b.balance
+          ? Number(
+              formatUnits(BigInt(b.balance), b.token.decimals)
+            ) * priceB
+          : 0;
+
+      return valueB - valueA;
+    });
+  }, [balances, prices]);
+
   const totalValue = useMemo(() => {
     let total = 0;
 
-    // Native token (ETH)
     if (nativeBalance?.balance && ethPrice) {
       total +=
         Number(formatUnits(BigInt(nativeBalance.balance), 18)) * ethPrice;
     }
 
-    // ERC20 tokens
     if (balances) {
       for (const balance of balances) {
         const addr = (balance.token as Token).address.toLowerCase();
@@ -113,7 +134,7 @@ export default function TokensContent({
   }, [nativeBalance, ethPrice, balances, prices]);
 
   return (
-    <TabsContent value="tokens" className="flex flex-col flex-1 h-full">
+    <TabsContent value="tokens" className="flex flex-col flex-1 h-full overflow-y-auto">
       <div className="p-4 flex flex-col space-y-1">
         {isPricesLoading ? (
           <Skeleton className="h-8 w-24" />
@@ -158,7 +179,7 @@ export default function TokensContent({
               price={ethPrice}
               onClick={() => onSend(nativeBalance.token)}
             />
-            {balances.map((balance) => (
+            {sortedBalances.map((balance) => (
               <TokenRow
                 key={(balance.token as Token).address}
                 balance={balance}

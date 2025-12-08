@@ -343,7 +343,9 @@ export default function RefuelForm() {
 
       <div className="p-6 space-y-6">
         <div className="flex flex-col gap-3">
-          <h3 className="font-medium">Target Chain</h3>
+          <div className="flex items-center justify-between h-8">
+            <h3 className="font-medium">Target Chain</h3>
+          </div>
           <ChainSelector onChange={setTargetChain} />
         </div>
 
@@ -355,7 +357,7 @@ export default function RefuelForm() {
         )}
 
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between h-8">
             <h3 className="font-medium">Refuel Amount</h3>
             {currentChain?.id === bsc.id ||
             currentChain?.id === bscTestnet.id ? (

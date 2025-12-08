@@ -15,7 +15,8 @@ import {
 import { Button } from "../ui/button";
 import { formatUnits } from "viem";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ETH } from "@/lib/constants/tokens";
+import { getEth } from "@/lib/constants/tokens";
+import { useCurrentChain } from "@/hooks/useCurrentChain";
 
 function TokenRow({
   balance,
@@ -70,7 +71,11 @@ export default function TokensContent({
   onReceive: () => void;
 }) {
   const { data: balances } = useTokenBalances();
-  const nativeBalance = useTokenBalance(ETH);
+  const currentChain = useCurrentChain();
+  const nativeBalance = useTokenBalance(
+    getEth(currentChain?.id),
+    currentChain?.id
+  );
 
   const tokenAddresses = useMemo(() => {
     if (!balances) return [];
@@ -94,15 +99,11 @@ export default function TokensContent({
 
       const valueA =
         priceA && a.balance
-          ? Number(
-              formatUnits(BigInt(a.balance), a.token.decimals)
-            ) * priceA
+          ? Number(formatUnits(BigInt(a.balance), a.token.decimals)) * priceA
           : 0;
       const valueB =
         priceB && b.balance
-          ? Number(
-              formatUnits(BigInt(b.balance), b.token.decimals)
-            ) * priceB
+          ? Number(formatUnits(BigInt(b.balance), b.token.decimals)) * priceB
           : 0;
 
       return valueB - valueA;
@@ -134,7 +135,10 @@ export default function TokensContent({
   }, [nativeBalance, ethPrice, balances, prices]);
 
   return (
-    <TabsContent value="tokens" className="flex flex-col flex-1 h-full overflow-y-auto">
+    <TabsContent
+      value="tokens"
+      className="flex flex-col flex-1 h-full overflow-y-auto"
+    >
       <div className="p-4 flex flex-col space-y-1">
         {isPricesLoading ? (
           <Skeleton className="h-8 w-24" />

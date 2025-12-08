@@ -1,5 +1,6 @@
 import type { Token, NativeToken } from "@/types/token";
 import { getChainConfig } from "@exec402/core";
+import { bsc, bscTestnet } from "wagmi/chains";
 
 export const TOKEN_ALIASES = {
   usdc: {
@@ -14,13 +15,6 @@ export const TOKEN_ALIASES = {
     decimals: 18,
     logoUri: "/icons/tokens/weth.png",
   },
-};
-
-export const ETH: NativeToken = {
-  name: "Ethereum",
-  symbol: "ETH",
-  decimals: 18,
-  logoUri: "/icons/tokens/eth.png",
 };
 
 export const BSC_USD1: Token = {
@@ -41,11 +35,36 @@ export function getUsdc(chainId: number): Token {
   };
 }
 
+export function getEth(chainId: number | undefined): NativeToken {
+  return chainId === bsc.id || chainId === bscTestnet.id
+    ? {
+        decimals: 18,
+        symbol: "BNB",
+        name: "Binance Coin",
+        logoUri: "/icons/tokens/bnb.png",
+      }
+    : {
+        decimals: 18,
+        symbol: "ETH",
+        name: "Ethereum",
+        logoUri: "/icons/tokens/eth.png",
+      };
+}
+
 export function getWeth(chainId: number): Token {
   const chainConfig = getChainConfig(chainId);
   return {
     ...TOKEN_ALIASES.weth,
     address: chainConfig?.tokens.weth ?? ("" as `0x${string}`),
+    symbol: chainId === bsc.id || chainId === bscTestnet.id ? "WBNB" : "WETH",
+    name:
+      chainId === bsc.id || chainId === bscTestnet.id
+        ? "Wrapped Binance Coin"
+        : "Wrapped Ether",
+    logoUri:
+      chainId === bsc.id || chainId === bscTestnet.id
+        ? "/icons/tokens/wbnb.png"
+        : "/icons/tokens/weth.png",
   };
 }
 

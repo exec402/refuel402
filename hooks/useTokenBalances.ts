@@ -9,7 +9,7 @@ import {
 } from "@/types/token";
 import { useAccount, useBalance } from "wagmi";
 import { useMemo } from "react";
-import { ETH, getDefaultTokenList } from "@/lib/constants/tokens";
+import { getEth, getDefaultTokenList } from "@/lib/constants/tokens";
 
 import { isSameAddress } from "@/lib/utils/common";
 
@@ -64,6 +64,7 @@ export function useTokenBalance(
 ): TokenBalance | NativeTokenBalance | undefined {
   const { address } = useAccount();
   const { data: balances } = useTokenBalances();
+
   const { data: nativeBalance } = useBalance({
     address,
     chainId,
@@ -78,9 +79,11 @@ export function useTokenBalance(
       return undefined;
     }
     if (!("address" in token)) {
+      const eth = getEth(chainId);
+
       return nativeBalance
         ? ({
-            token: ETH,
+            token: eth,
             balance: nativeBalance.value.toString(),
           } as NativeTokenBalance)
         : undefined;
@@ -94,5 +97,5 @@ export function useTokenBalance(
           balance: "0",
         }) as TokenBalance)
       : undefined;
-  }, [balances, nativeBalance, token]);
+  }, [balances, nativeBalance, token, chainId]);
 }

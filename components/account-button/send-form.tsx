@@ -31,8 +31,9 @@ import {
   NativeTokenBalance,
   TokenBalance,
 } from "@/types/token";
-import { ETH } from "@/lib/constants/tokens";
+import { getEth } from "@/lib/constants/tokens";
 import { useAccount, useBalance } from "wagmi";
+import { useCurrentChain } from "@/hooks/useCurrentChain";
 
 function TokenSelect({
   selectedToken,
@@ -52,10 +53,11 @@ function TokenSelect({
   });
 
   const allBalances: (TokenBalance | NativeTokenBalance)[] = [];
-
-  if (nativeBalance) {
+  const currentChain = useCurrentChain();
+  const eth = getEth(currentChain?.id);
+  if (nativeBalance && currentChain && eth) {
     allBalances.push({
-      token: ETH,
+      token: eth,
       balance: nativeBalance.value.toString(),
     });
   }

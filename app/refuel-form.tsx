@@ -21,6 +21,7 @@ import { REFERRER_ADDRESS, SUPPORTED_CHAINS } from "@/lib/constants";
 import { useTokenPrice } from "@exec402/react";
 import RecipientsUploader from "./recipients-uploader";
 
+import { BSC_USD1 } from "@/lib/constants/tokens";
 import { useCall } from "@exec402/react";
 
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useRefuelQuote } from "@/hooks/useRefuelQuote";
+import { Token } from "@/types/token";
 
 type Tab = "solo" | "batch";
 
@@ -79,6 +81,8 @@ export default function RefuelForm() {
   const currentChain = useCurrentChain();
   const usdc = useUsdc();
 
+  const [toUseToken, setToUseToken] = useState<Token | undefined>(usdc);
+
   useEffect(() => {
     if (isRefuelingForOther && isAddress(destination) && tab === "solo") {
       setRecipients([destination]);
@@ -101,9 +105,9 @@ export default function RefuelForm() {
 
   const { mutateAsync: call } = useCall();
 
-  const amountUsdcBigInt = useMemo(
-    () => BigInt(amount * 10 ** (usdc?.decimals ?? 6)),
-    [amount, usdc]
+  const amountBigInt = useMemo(
+    () => BigInt(amount * 10 ** (toUseToken?.decimals ?? 6)),
+    [amount, toUseToken]
   );
 
   const [refuelData, setRefuleData] = useState<{
@@ -112,21 +116,21 @@ export default function RefuelForm() {
   } | null>(null);
 
   useEffect(() => {
-    if (address && currentChain) {
+    if (address && currentChain && toUseToken) {
       getRefuelData(
         address,
-        amount.toString(),
+        toUseToken.address,
+        parseUnits(amount.toString(), toUseToken.decimals),
         recipients as `0x${string}`[],
         currentChain.id,
         targetChain.id,
-        "0"
+        "0",
+        toUseToken.address === BSC_USD1.address ? 500 : undefined
       ).then((data) => {
-        if (data) {
-          setRefuleData(data);
-        }
+        setRefuleData(data ?? null);
       });
     }
-  }, [amount, recipients, targetChain, address, currentChain]);
+  }, [amount, recipients, targetChain, address, currentChain, toUseToken]);
 
   const { mutate: refuel, isPending: isRefueling } = useMutation({
     mutationFn: async () => {
@@ -137,7 +141,7 @@ export default function RefuelForm() {
         throw new Error("Invalid refuel data");
       }
 
-      const description = `Refuel ${amount} ${usdc?.symbol} to ${
+      const description = `Refuel ${amount} ${toUseToken?.symbol} to ${
         recipients.length
       } ${recipients.length > 1 ? "addresses" : "address"}(from ${
         currentChain.name
@@ -148,7 +152,17 @@ export default function RefuelForm() {
         : taskFee || "0";
 
       return await call({
-        amount: parseUnits(amount.toString(), usdc?.decimals ?? 6).toString(),
+        token: toUseToken?.address,
+        tokenName:
+          toUseToken?.address === BSC_USD1.address
+            ? "World Liberty Financial USD"
+            : undefined,
+        authorizationType:
+          toUseToken?.address === BSC_USD1.address ? "permit" : undefined,
+        amount: parseUnits(
+          amount.toString(),
+          toUseToken?.decimals ?? 6
+        ).toString(),
         target: refuelData.target,
         description,
         data: refuelData.data as `0x${string}`,
@@ -167,7 +181,6 @@ export default function RefuelForm() {
       });
     },
     onSuccess: (data) => {
-      console.log(data);
       if (data) {
         setLastRefuelTaskId(data.taskId);
       }
@@ -179,8 +192,8 @@ export default function RefuelForm() {
   });
 
   const { data: refuelQuote } = useRefuelQuote({
-    amountUsdc: amountUsdcBigInt,
-    amountDecimals: usdc?.decimals ?? 6,
+    amountUsdc: amountBigInt,
+    amountDecimals: toUseToken?.decimals ?? 6,
     targetChainId: targetChain.id,
   });
 
@@ -188,7 +201,7 @@ export default function RefuelForm() {
     chainId: targetChain.id,
   });
 
-  const usdcBalance = useTokenBalance(usdc);
+  const balance = useTokenBalance(toUseToken);
 
   const autoTaskFee = useAutoCallTaskFee({
     target: refuelData?.target ?? "0x",
@@ -196,11 +209,13 @@ export default function RefuelForm() {
   });
 
   const insufficientBalance = useMemo(() => {
-    return usdcBalance === undefined
+    return balance === undefined
       ? false
-      : Number(formatUnits(BigInt(usdcBalance.balance), usdc?.decimals ?? 6)) <
+      : Number(
+          formatUnits(BigInt(balance.balance), toUseToken?.decimals ?? 6)
+        ) <
           amount + (isAutoTaskFee ? autoTaskFee ?? 0 : Number(taskFee ?? 0));
-  }, [usdcBalance, amount, autoTaskFee, taskFee, isAutoTaskFee, usdc]);
+  }, [balance, amount, autoTaskFee, taskFee, isAutoTaskFee, toUseToken]);
 
   const isCrossChain = useMemo(() => {
     return targetChain.id !== currentChain?.id;
@@ -332,7 +347,34 @@ export default function RefuelForm() {
         )}
 
         <div className="flex flex-col gap-3">
-          <h3 className="font-medium">Refuel Amount</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium">Refuel Amount</h3>
+            {currentChain?.id === bsc.id ||
+            currentChain?.id === bscTestnet.id ? (
+              <div className="flex items-center space-x-2">
+                <Button
+                  size="sm"
+                  variant={
+                    toUseToken?.address === usdc?.address ? "outline" : "ghost"
+                  }
+                  onClick={() => setToUseToken(usdc)}
+                >
+                  {usdc?.symbol}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={
+                    toUseToken?.address === BSC_USD1?.address
+                      ? "outline"
+                      : "ghost"
+                  }
+                  onClick={() => setToUseToken(BSC_USD1)}
+                >
+                  {BSC_USD1?.symbol}
+                </Button>
+              </div>
+            ) : null}
+          </div>
           <div className="grid gap-4 grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 p-4 rounded-lg bg-accent/80">
             {amounts.map((a) => (
               <Button
@@ -345,7 +387,7 @@ export default function RefuelForm() {
                 )}
                 onClick={() => handlePickAmount(a)}
               >
-                {a} {usdc?.symbol}
+                {a} {toUseToken?.symbol}
               </Button>
             ))}
           </div>
@@ -390,7 +432,10 @@ export default function RefuelForm() {
               className="h-12 text-lg w-full"
               onClick={() => refuel()}
               disabled={
-                isRefueling || insufficientBalance || !recipients.length
+                isRefueling ||
+                insufficientBalance ||
+                !recipients.length ||
+                !refuelData
               }
             >
               {isRefueling ? (
@@ -400,6 +445,8 @@ export default function RefuelForm() {
               )}
               {insufficientBalance ? (
                 <span>Insufficient Balance</span>
+              ) : !refuelData ? (
+                <span>Unsupported</span>
               ) : (
                 <span>{isCrossChain && "Cross Chain "}Refuel</span>
               )}

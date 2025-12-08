@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { type Chain } from "viem/chains";
 import { SUPPORTED_CHAINS } from "@/lib/constants";
+import { useCurrentChain } from "@/hooks/useCurrentChain";
 import {
   Popover,
   PopoverContent,
@@ -60,7 +61,10 @@ export default function ChainSelector({
   onChange: (chain: Chain) => void;
 }) {
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [chain, setChain] = useState<Chain>(SUPPORTED_CHAINS[0]);
+  const currentChain = useCurrentChain();
+  const [chain, setChain] = useState<Chain>(
+    currentChain ?? SUPPORTED_CHAINS[0]
+  );
 
   useEffect(() => {
     onChange(chain);

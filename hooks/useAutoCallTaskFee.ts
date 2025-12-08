@@ -43,8 +43,7 @@ export function useMockCallTxFeeEth({
         const fee = totalGas * (gasPrice || BigInt(0));
 
         return Number(formatEther(fee));
-      } catch (error) {
-        console.log(error);
+      } catch {
         return fallbackTxFee;
       }
     },

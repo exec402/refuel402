@@ -23,6 +23,14 @@ export const ETH: NativeToken = {
   logoUri: "/icons/tokens/eth.png",
 };
 
+export const BSC_USD1: Token = {
+  name: "World Liberty Financial USD",
+  symbol: "USD1",
+  decimals: 18,
+  logoUri: "/icons/tokens/usd1.webp",
+  address: "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d",
+};
+
 export function getUsdc(chainId: number): Token {
   const chainConfig = getChainConfig(chainId);
   return {
@@ -45,8 +53,14 @@ export function getDefaultTokenList(chainId: number): Token[] {
   const chainConfig = getChainConfig(chainId);
   if (!chainConfig) return [];
 
-  return [
+  const tokens: Token[] = [
     { ...TOKEN_ALIASES.usdc, address: chainConfig.tokens.usdc },
     { ...TOKEN_ALIASES.weth, address: chainConfig.tokens.weth },
   ];
+
+  if (chainId === 56) {
+    tokens.push(BSC_USD1);
+  }
+
+  return tokens;
 }

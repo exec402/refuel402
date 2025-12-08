@@ -19,30 +19,34 @@ import {
 
 export function buildRefuelMessage(
   initiator: Address,
-  amountUsdc: string,
+  amountUsdc: bigint,
   recipients: Address[],
   sourceChainId: number,
   targetChainId: number,
   minEthOut = "0",
   extraCalls: Call[] = [],
-  amountUsdcOverride?: bigint
+  amountUsdcOverride?: bigint,
+  poolFeeOverride?: number,
+  usdcOverride?: Address
 ) {
   const targetChainConfig = getChainConfig(targetChainId);
   if (!targetChainConfig) {
     throw new Error(`Unsupported target chain: ${targetChainId}`);
   }
 
-  const { usdc, weth } = targetChainConfig.tokens;
+  const { usdc: defaultUsdc, weth } = targetChainConfig.tokens;
   const { swapRouter, multicallHandler, execCore } =
     targetChainConfig.contracts;
+
+  const usdc = usdcOverride ?? defaultUsdc;
 
   const amountUsdcBigInt =
     amountUsdcOverride !== undefined
       ? amountUsdcOverride
-      : parseUnits(amountUsdc, 6);
+      : amountUsdc;
   const minEthOutBigInt = parseUnits(minEthOut, 18);
 
-  const poolFee = ethUsdcPoolFees[targetChainId];
+  const poolFee = poolFeeOverride ?? ethUsdcPoolFees[targetChainId];
 
   const calls: Call[] = [];
 
@@ -134,18 +138,19 @@ export function buildRefuelMessage(
 
 export async function getRefuelData(
   initiator: Address,
-  amountUsdc: string,
+  token: Address,
+  amountBigInt: bigint,
   recipients: Address[],
   sourceChainId: number,
   targetChainId: number,
-  minEthOut = "0"
+  minEthOut = "0",
+  poolFee?: number
 ) {
   const sourceChainConfig = getChainConfig(sourceChainId);
   if (!sourceChainConfig) {
     return undefined;
   }
-  const sourceUsdc = sourceChainConfig.tokens.usdc;
-  const sourceDecimals = sourceChainConfig.defaultAsset.decimals;
+
   const sourceMulticallHandler = sourceChainConfig.contracts.multicallHandler;
   const sourceExecCore = sourceChainConfig.contracts.execCore;
   const sourceSpokePool = sourceChainConfig.contracts.spokePool;
@@ -156,7 +161,7 @@ export async function getRefuelData(
   }
 
   const destMulticallHandler = targetChainConfig.contracts.multicallHandler;
-  const destUsdc = targetChainConfig.tokens.usdc;
+  const destToken = targetChainConfig.tokens.usdc;
 
   const isCrossChain = targetChainId !== sourceChainId;
 
@@ -178,12 +183,15 @@ export async function getRefuelData(
     const extraCalls: Call[] = mintCall ? [mintCall] : [];
     const refuelMessage = buildRefuelMessage(
       initiator,
-      amountUsdc,
+      amountBigInt,
       recipients,
       sourceChainId,
       targetChainId,
       minEthOut,
-      extraCalls
+      extraCalls,
+      undefined,
+      poolFee,
+      token
     );
 
     const data = encodeFunctionData({
@@ -200,16 +208,14 @@ export async function getRefuelData(
         },
       ],
       functionName: "handleMessage",
-      args: [destUsdc, refuelMessage],
+      args: [token, refuelMessage],
     });
 
     return {
-      target: destMulticallHandler,
+      target: sourceMulticallHandler,
       data,
     };
   }
-
-  const amountUsdcBigInt = parseUnits(amountUsdc, sourceDecimals);
 
   // For cross-chain refuel
   // Across will send `outputAmount` (after fees) to the destination.
@@ -217,36 +223,42 @@ export async function getRefuelData(
   // due to insufficient balance on the MulticallHandler.
 
   let acrossQuote: AcrossQuote | null = null;
+
   if (isCrossChain) {
     acrossQuote = await getAcrossQuote({
-      amount: amountUsdcBigInt,
-      inputToken: sourceUsdc,
-      outputToken: destUsdc,
+      amount: amountBigInt,
+      inputToken: token,
+      outputToken: destToken,
       sourceChainId,
       targetChainId,
       network: NETWORK as ExecNetwork,
+    }).catch(() => {
+      return null;
     });
+    if (!acrossQuote) {
+      return undefined;
+    }
   }
 
   const usdcForSwap =
     acrossQuote && acrossQuote.outputAmount > BigInt(0)
       ? acrossQuote.outputAmount
-      : amountUsdcBigInt;
+      : amountBigInt;
 
   const refuelMessage = buildRefuelMessage(
     initiator,
-    amountUsdc,
+    amountBigInt,
     recipients,
     sourceChainId,
     targetChainId,
     minEthOut,
     [],
-    usdcForSwap
+    usdcForSwap,
+    poolFee,
+    token
   );
 
-  const outputAmount = acrossQuote
-    ? acrossQuote.outputAmount
-    : amountUsdcBigInt;
+  const outputAmount = acrossQuote ? acrossQuote.outputAmount : amountBigInt;
   const quoteTimestamp = acrossQuote
     ? acrossQuote.quoteTimestamp
     : Math.floor(Date.now() / 1000);
@@ -289,9 +301,9 @@ export async function getRefuelData(
       args: [
         sourceExecCore, // depositor
         destMulticallHandler,
-        sourceUsdc, // inputToken
-        destUsdc, // outputToken
-        amountUsdcBigInt, // inputAmount
+        token, // inputToken
+        destToken, // outputToken
+        amountBigInt, // inputAmount
         outputAmount, // outputAmount
         BigInt(targetChainId), // destinationChainId
         exclusiveRelayer,
@@ -316,26 +328,26 @@ export async function getRefuelData(
   const calls: Call[] = [
     // Transfer USDC from ExecCore to MulticallHandler
     buildTransferFromCall({
-      token: sourceUsdc,
+      token,
       from: sourceExecCore,
       to: sourceMulticallHandler,
-      amount: amountUsdcBigInt,
+      amount: amountBigInt,
     }),
 
     // Approve SpokePool to spend USDC
     buildApproveCall({
-      token: sourceUsdc,
+      token,
       spender: sourceSpokePool,
-      amount: amountUsdcBigInt,
+      amount: amountBigInt,
     }),
     // depositV3 with depositor = MulticallHandler
     buildDepositV3Call({
       spokePool: sourceSpokePool,
       depositor: sourceSpokePool,
       recipient: sourceMulticallHandler,
-      inputToken: sourceUsdc,
-      outputToken: destUsdc,
-      inputAmount: amountUsdcBigInt,
+      inputToken: token,
+      outputToken: destToken,
+      inputAmount: amountBigInt,
       outputAmount,
       destinationChainId: BigInt(targetChainId),
       exclusiveRelayer,
@@ -365,7 +377,7 @@ export async function getRefuelData(
       },
     ],
     functionName: "handleMessage",
-    args: [sourceUsdc, message],
+    args: [token, message],
   });
 
   return {

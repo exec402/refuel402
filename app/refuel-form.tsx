@@ -81,7 +81,19 @@ export default function RefuelForm() {
   const currentChain = useCurrentChain();
   const usdc = useUsdc();
 
-  const [toUseToken, setToUseToken] = useState<Token | undefined>(usdc);
+  const isCrossChain = useMemo(() => {
+    return targetChain.id !== currentChain?.id;
+  }, [targetChain, currentChain]);
+
+  const [toUseToken, setToUseToken] = useState<Token | undefined>(
+    currentChain?.id === bsc.id ? (isCrossChain ? usdc : BSC_USD1) : usdc
+  );
+
+  useEffect(() => {
+    setToUseToken(
+      currentChain?.id === bsc.id ? (isCrossChain ? usdc : BSC_USD1) : usdc
+    );
+  }, [currentChain, isCrossChain, usdc]);
 
   useEffect(() => {
     if (isRefuelingForOther && isAddress(destination) && tab === "solo") {
@@ -216,10 +228,6 @@ export default function RefuelForm() {
         ) <
           amount + (isAutoTaskFee ? autoTaskFee ?? 0 : Number(taskFee ?? 0));
   }, [balance, amount, autoTaskFee, taskFee, isAutoTaskFee, toUseToken]);
-
-  const isCrossChain = useMemo(() => {
-    return targetChain.id !== currentChain?.id;
-  }, [targetChain, currentChain]);
 
   const feeWarning = useMemo(() => {
     return Number(taskFee) < (autoTaskFee ?? 0) && !isAutoTaskFee;

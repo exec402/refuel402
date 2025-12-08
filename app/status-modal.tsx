@@ -34,6 +34,9 @@ function CountDown({ ts }: { ts: number }) {
 
 export default function StatusModal() {
   const { lastRefuelTaskId, setLastRefuelTaskId } = useLastRefuelTaskIdStore();
+  const [isClosing, setIsClosing] = useState(false);
+
+  const open = !!lastRefuelTaskId && !isClosing;
 
   const { data: task } = useTask(lastRefuelTaskId ? lastRefuelTaskId : "", {
     refetchInterval: 3000,
@@ -52,14 +55,23 @@ export default function StatusModal() {
   );
 
   const onClose = () => {
-    setLastRefuelTaskId("");
+    setIsClosing(true);
   };
 
-  const isOpen = !!lastRefuelTaskId;
+  const onAnimationEnd = () => {
+    if (isClosing) {
+      setLastRefuelTaskId("");
+      setIsClosing(false);
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent showCloseButton={false} className="w-sm outline-none">
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="w-sm outline-none"
+        onAnimationEnd={onAnimationEnd}
+      >
         <DialogTitle className="sr-only">Task Status</DialogTitle>
         <DialogDescription className="sr-only">
           Refuel task status

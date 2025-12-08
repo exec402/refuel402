@@ -86,8 +86,11 @@ function TokenSelect({
                     {formatNumber(
                       formatUnits(
                         BigInt(
-                          allBalances.find(
-                            (balance) => balance.token === selectedToken
+                          allBalances.find((balance) =>
+                            "address" in balance.token &&
+                            "address" in selectedToken
+                              ? balance.token.address === selectedToken.address
+                              : balance.token.symbol === selectedToken.symbol
                           )?.balance ?? "0"
                         ),
                         selectedToken.decimals

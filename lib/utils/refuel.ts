@@ -252,8 +252,7 @@ export async function getRefuelData(
     minEthOut,
     [],
     usdcForSwap,
-    poolFee,
-    token
+    poolFee
   );
 
   const outputAmount = acrossQuote ? acrossQuote.outputAmount : amountBigInt;

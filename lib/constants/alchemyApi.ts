@@ -1,4 +1,10 @@
-import { baseSepolia, optimismSepolia, base, optimism, bsc } from "wagmi/chains";
+import {
+  baseSepolia,
+  optimismSepolia,
+  base,
+  optimism,
+  bsc,
+} from "wagmi/chains";
 
 const alchemyKey = process.env.ALCHEMY_KEY;
 

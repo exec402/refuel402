@@ -77,19 +77,37 @@ export async function GET(req: NextRequest) {
     let data;
 
     if (blockScoutApi) {
-      const tokenInfoPromises = nonZeroBalances.map((t) =>
-        fetch(`${blockScoutApi}/tokens/${t.contractAddress}`, {
-          cache: "no-store",
-        }).then((res) => res.json() as Promise<BlockScoutToken>)
-      );
+      const tokenInfoPromises = nonZeroBalances.map(async (t) => {
+        const res = await fetch(
+          `${blockScoutApi}/tokens/${t.contractAddress}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) {
+          return null;
+        }
+        return res.json() as Promise<BlockScoutToken>;
+      });
 
       const tokenInfos = await Promise.all(tokenInfoPromises);
 
-      data = nonZeroBalances.map((balance, index) => ({
-        token: tokenInfos[index],
-        token_id: null,
-        value: BigInt(balance.tokenBalance).toString(),
-      }));
+      data = nonZeroBalances
+        .map((balance, index) => {
+          if (!tokenInfos[index]) return null;
+          return {
+            token: tokenInfos[index],
+            token_id: null,
+            value: BigInt(balance.tokenBalance).toString(),
+          };
+        })
+        .filter(
+          (
+            x
+          ): x is {
+            token: BlockScoutToken;
+            token_id: null;
+            value: string;
+          } => x !== null
+        );
     } else {
       const defaultTokens = getDefaultTokenList(numericChainId);
 

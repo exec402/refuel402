@@ -62,7 +62,11 @@ export default function RefuelForm() {
   const [soloAmount, setSoloAmount] = useState<number>(SOLO_AMOUNTS[0]);
   const [batchAmount, setBatchAmount] = useState<number>(BATCH_AMOUNTS[2]);
 
-  const [targetChain, setTargetChain] = useState<Chain>(SUPPORTED_CHAINS[0]);
+  const currentChain = useCurrentChain();
+
+  const [targetChain, setTargetChain] = useState<Chain>(
+    currentChain ?? SUPPORTED_CHAINS[0]
+  );
   const [recipients, setRecipients] = useState<string[]>([]);
 
   const amounts = tab === "solo" ? SOLO_AMOUNTS : BATCH_AMOUNTS;
@@ -78,7 +82,6 @@ export default function RefuelForm() {
 
   const { address } = useAccount();
 
-  const currentChain = useCurrentChain();
   const usdc = useUsdc();
 
   const isCrossChain = useMemo(() => {
@@ -128,6 +131,8 @@ export default function RefuelForm() {
   } | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (address && currentChain && toUseToken) {
       getRefuelData(
         address,
@@ -139,9 +144,15 @@ export default function RefuelForm() {
         "0",
         toUseToken.address === BSC_USD1.address ? 500 : undefined
       ).then((data) => {
-        setRefuleData(data ?? null);
+        if (!cancelled) {
+          setRefuleData(data ?? null);
+        }
       });
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [amount, recipients, targetChain, address, currentChain, toUseToken]);
 
   const { mutate: refuel, isPending: isRefueling } = useMutation({

@@ -1,24 +1,19 @@
 "use client";
 
 import RefuelForm from "./refuel-form";
-import { AnimatePresence } from "framer-motion";
-import { useLastRefuelTaskIdStore } from "@/stores/lastRefuelId";
-import Status from "./status";
+import StatusModal from "./status-modal";
 import Image from "next/image";
 
 export default function Refuel() {
-  const { lastRefuelTaskId } = useLastRefuelTaskIdStore();
-
   return (
     <div className="mx-auto w-full max-w-[520px]">
       <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-4 sm:mt-6 md:mt-8 px-6">
         One click, full tank — ready for the next block.
       </h1>
       <div className="mt-8">
-        <AnimatePresence>
-          {lastRefuelTaskId ? <Status id={lastRefuelTaskId} /> : <RefuelForm />}
-        </AnimatePresence>
+        <RefuelForm />
       </div>
+      <StatusModal />
       <div className="flex items-center justify-center pt-4 pb-6 text-sm">
         <span className="text-muted-foreground/60">Powered by</span>
         <a

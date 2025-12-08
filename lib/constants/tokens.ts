@@ -54,7 +54,12 @@ export function getDefaultTokenList(chainId: number): Token[] {
   if (!chainConfig) return [];
 
   const tokens: Token[] = [
-    { ...TOKEN_ALIASES.usdc, address: chainConfig.tokens.usdc },
+    {
+      ...TOKEN_ALIASES.usdc,
+      address: chainConfig.tokens.usdc,
+      symbol: chainConfig.defaultAsset.name,
+      decimals: chainConfig.defaultAsset.decimals,
+    },
     { ...TOKEN_ALIASES.weth, address: chainConfig.tokens.weth },
   ];
 

@@ -41,9 +41,7 @@ export function buildRefuelMessage(
   const usdc = usdcOverride ?? defaultUsdc;
 
   const amountUsdcBigInt =
-    amountUsdcOverride !== undefined
-      ? amountUsdcOverride
-      : amountUsdc;
+    amountUsdcOverride !== undefined ? amountUsdcOverride : amountUsdc;
   const minEthOutBigInt = parseUnits(minEthOut, 18);
 
   const poolFee = poolFeeOverride ?? ethUsdcPoolFees[targetChainId];

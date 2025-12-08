@@ -155,6 +155,13 @@ export default function RefuelForm() {
     };
   }, [amount, recipients, targetChain, address, currentChain, toUseToken]);
 
+  const autoTaskFee = useAutoCallTaskFee({
+    target: refuelData?.target ?? "0x",
+    data: refuelData?.data ?? "0x",
+  });
+
+  const fee = isAutoTaskFee ? (autoTaskFee || 0).toString() : taskFee || "0";
+
   const { mutate: refuel, isPending: isRefueling } = useMutation({
     mutationFn: async () => {
       if (!currentChain) {
@@ -169,10 +176,6 @@ export default function RefuelForm() {
       } ${recipients.length > 1 ? "addresses" : "address"}(from ${
         currentChain.name
       } to ${targetChain.name})`;
-
-      const fee = isAutoTaskFee
-        ? (autoTaskFee || 0).toString()
-        : taskFee || "0";
 
       return await call({
         token: toUseToken?.address,
@@ -225,11 +228,6 @@ export default function RefuelForm() {
   });
 
   const balance = useTokenBalance(toUseToken);
-
-  const autoTaskFee = useAutoCallTaskFee({
-    target: refuelData?.target ?? "0x",
-    data: refuelData?.data ?? "0x",
-  });
 
   const insufficientBalance = useMemo(() => {
     return balance === undefined
@@ -456,7 +454,8 @@ export default function RefuelForm() {
                 isRefueling ||
                 insufficientBalance ||
                 !recipients.length ||
-                !refuelData
+                !refuelData ||
+                !Number(fee)
               }
             >
               {isRefueling ? (

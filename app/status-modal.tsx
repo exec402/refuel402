@@ -181,6 +181,7 @@ export default function StatusModal() {
                 <a
                   href={`${targetChain?.blockExplorers?.default.url}/address/${address}#internaltx`}
                   target="_blank"
+                  onClick={onClose}
                 >
                   <Button>
                     View on Explorer

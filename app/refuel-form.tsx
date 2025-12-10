@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import ChainSelector from "./chain-selector";
@@ -81,6 +82,32 @@ export default function RefuelForm() {
   const { setLastRefuelTaskId } = useLastRefuelTaskIdStore();
 
   const { address } = useAccount();
+
+  const searchParams = useSearchParams();
+  const referrerFromParams = searchParams.get("referrer");
+  const feeFromParams = searchParams.get("fee");
+
+  const referrer = useMemo(() => {
+    if (referrerFromParams && isAddress(referrerFromParams)) {
+      return referrerFromParams as `0x${string}`;
+    }
+    return REFERRER_ADDRESS as `0x${string}`;
+  }, [referrerFromParams]);
+
+  useEffect(() => {
+    if (
+      feeFromParams &&
+      !isNaN(Number(feeFromParams)) &&
+      Number(feeFromParams) > 0
+    ) {
+      setTaskFee(feeFromParams);
+
+      if (isAutoTaskFee) {
+        toggleIsAutoTaskFee(false);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const usdc = useUsdc();
 
@@ -193,7 +220,7 @@ export default function RefuelForm() {
         description,
         data: refuelData.data as `0x${string}`,
         chainId: currentChain?.id,
-        referrer: REFERRER_ADDRESS as `0x${string}`,
+        referrer,
         fee: parseUnits(fee, usdc?.decimals ?? 6).toString(),
       }).catch((err) => {
         console.log(err);

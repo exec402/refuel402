@@ -20,7 +20,7 @@ export function useMockCallTxFeeEth({
     : undefined;
   const execCoreAddress = chainConfig?.contracts.execCore;
 
-  const fallbackTxFee = currentChain?.id === 56 ? 0.000007 : 0.0000006;
+  const fallbackTxFee = currentChain?.id === 56 ? 0.000007 : 0.0000014;
 
   return useQuery({
     queryKey: ["txFee", target, data, execCoreAddress],

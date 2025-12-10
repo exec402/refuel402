@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Timer } from "lucide-react";
+import { ExternalLink, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -12,9 +12,72 @@ import {
 } from "@/components/ui/dialog";
 import PingDot from "@/components/ping-dot";
 import { useLastRefuelTaskIdStore } from "@/stores/lastRefuelId";
-import { getTaskExpirationTime } from "@exec402/core";
+import { getTaskExpirationTime, type Task } from "@exec402/core";
 import { useTask, useVerifyTask } from "@exec402/react";
 import SuccessIcon from "@/components/succuess-icon";
+import { decodeFunctionData } from "viem";
+
+import { useChains, useAccount } from "wagmi";
+
+const depositV3Abi = [
+  {
+    name: "depositV3",
+    type: "function",
+    inputs: [
+      { name: "depositor", type: "address" },
+      { name: "recipient", type: "address" },
+      { name: "inputToken", type: "address" },
+      { name: "outputToken", type: "address" },
+      { name: "inputAmount", type: "uint256" },
+      { name: "outputAmount", type: "uint256" },
+      { name: "destinationChainId", type: "uint256" },
+      { name: "exclusiveRelayer", type: "address" },
+      { name: "quoteTimestamp", type: "uint32" },
+      { name: "fillDeadline", type: "uint32" },
+      { name: "exclusivityDeadline", type: "uint32" },
+      { name: "message", type: "bytes" },
+    ],
+    outputs: [],
+    stateMutability: "payable",
+  },
+] as const;
+
+const DEPOSIT_V3_SELECTOR = "0xe0db3fcf";
+
+function extractDepositV3FromData(data: string): number | undefined {
+  try {
+    const decoded = decodeFunctionData({
+      abi: depositV3Abi,
+      data: data as `0x${string}`,
+    });
+    return Number(decoded.args[6]);
+  } catch {
+    const selectorIndex = data
+      .toLowerCase()
+      .indexOf(DEPOSIT_V3_SELECTOR.slice(2));
+    if (selectorIndex === -1) return undefined;
+
+    const depositV3Data = `0x${data.slice(selectorIndex)}` as `0x${string}`;
+    try {
+      const decoded = decodeFunctionData({
+        abi: depositV3Abi,
+        data: depositV3Data,
+      });
+      return Number(decoded.args[6]);
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+function getTargetChainId(task: Task | undefined): number | undefined {
+  if (!task) return undefined;
+
+  const payloadJson = JSON.parse(task.payload);
+  const crossChainTargetId = extractDepositV3FromData(payloadJson.data);
+
+  return crossChainTargetId ?? task.chainId;
+}
 
 function CountDown({ ts }: { ts: number }) {
   const [seconds, setSeconds] = useState(
@@ -35,6 +98,10 @@ function CountDown({ ts }: { ts: number }) {
 export default function StatusModal() {
   const { lastRefuelTaskId, setLastRefuelTaskId } = useLastRefuelTaskIdStore();
   const [isClosing, setIsClosing] = useState(false);
+
+  const { address } = useAccount();
+
+  const chains = useChains();
 
   const open = !!lastRefuelTaskId && !isClosing;
 
@@ -64,6 +131,11 @@ export default function StatusModal() {
       setIsClosing(false);
     }
   };
+
+  const targetChain = useMemo(() => {
+    const targetChainid = getTargetChainId(task);
+    return chains.find((chain) => chain.id === targetChainid);
+  }, [chains, task]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -99,12 +171,23 @@ export default function StatusModal() {
               <div className="text-center">
                 <p className="text-2xl font-semibold">Success</p>
                 <span className="text-muted-foreground">
-                  Refuel task executed.
+                  Gas added. You&apos;re ready to go.
                 </span>
               </div>
-              <Button onClick={onClose} className="mt-2">
-                Refuel another
-              </Button>
+              <div className="space-x-2 flex mt-2">
+                <Button onClick={onClose} variant="secondary">
+                  Refuel again
+                </Button>
+                <a
+                  href={`${targetChain?.blockExplorers?.default.url}/address/${address}#internaltx`}
+                  target="_blank"
+                >
+                  <Button>
+                    View on Explorer
+                    <ExternalLink />
+                  </Button>
+                </a>
+              </div>
             </>
           ) : (
             <>

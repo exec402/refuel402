@@ -222,6 +222,7 @@ export default function RefuelForm() {
         chainId: currentChain?.id,
         referrer,
         fee: parseUnits(fee, usdc?.decimals ?? 6).toString(),
+        url: "https://refuel402.com",
       }).catch((err) => {
         console.log(err);
         if (

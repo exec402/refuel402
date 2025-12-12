@@ -44,14 +44,18 @@ const depositV3Abi = [
 
 const DEPOSIT_V3_SELECTOR = "0xe0db3fcf";
 
-function extractDepositV3FromData(data: string): number | undefined {
+function extractDepositV3FromData(
+  data: string | undefined
+): number | undefined {
   try {
+    if (!data) return undefined;
     const decoded = decodeFunctionData({
       abi: depositV3Abi,
       data: data as `0x${string}`,
     });
     return Number(decoded.args[6]);
   } catch {
+    if (!data) return undefined;
     const selectorIndex = data
       .toLowerCase()
       .indexOf(DEPOSIT_V3_SELECTOR.slice(2));

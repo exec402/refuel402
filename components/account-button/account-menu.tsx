@@ -103,12 +103,6 @@ export default function AccountMenu() {
           <>
             <DropdownMenuItem
               className="py-3 px-4 font-medium"
-              onClick={onCopyAddress}
-            >
-              <Copy /> Copy Address
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="py-3 px-4 font-medium"
               onSelect={(e) => {
                 e.preventDefault();
                 setShowChainMenu(true);
@@ -117,6 +111,12 @@ export default function AccountMenu() {
               <ChainIcon className="size-4" />
               Switch Chain
               <ChevronRight className="ml-auto size-4" />
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="py-3 px-4 font-medium"
+              onClick={onCopyAddress}
+            >
+              <Copy /> Copy Address
             </DropdownMenuItem>
             <a
               href={`${currentChain?.blockExplorers?.default.url}/address/${address}`}

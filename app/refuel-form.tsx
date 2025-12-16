@@ -194,9 +194,33 @@ export default function RefuelForm() {
       if (!currentChain) {
         throw new Error("Unsupported network");
       }
-      if (!refuelData) {
+      if (!address) {
+        throw new Error("Wallet not connected");
+      }
+      if (!toUseToken) {
+        throw new Error("Invalid token");
+      }
+      if (!recipients.length) {
+        throw new Error("Invalid recipients");
+      }
+
+      // Recompute right before submitting so cross-chain quotes (Across fillDeadline)
+      // don't go stale if the user keeps the page open for a while.
+      const latestRefuelData = await getRefuelData(
+        address,
+        toUseToken.address,
+        parseUnits(amount.toString(), toUseToken.decimals),
+        recipients as `0x${string}`[],
+        currentChain.id,
+        targetChain.id,
+        "0",
+        toUseToken.address === BSC_USD1.address ? 500 : undefined
+      ).catch(() => undefined);
+
+      if (!latestRefuelData) {
         throw new Error("Invalid refuel data");
       }
+      setRefuleData(latestRefuelData);
 
       const description = `Refuel ${amount} ${toUseToken?.symbol} to ${
         recipients.length
@@ -216,9 +240,9 @@ export default function RefuelForm() {
           amount.toString(),
           toUseToken?.decimals ?? 6
         ).toString(),
-        target: refuelData.target,
+        target: latestRefuelData.target,
         description,
-        data: refuelData.data as `0x${string}`,
+        data: latestRefuelData.data as `0x${string}`,
         chainId: currentChain?.id,
         referrer,
         fee: parseUnits(fee, usdc?.decimals ?? 6).toString(),

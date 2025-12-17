@@ -5,9 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { useConnectWalletModalStore } from "@/stores/connectWalletModal";
 import { useAccount } from "wagmi";
-import { Wallet } from "lucide-react";
+import { Wallet, Share2, Copy, Check } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import AccountButton from "@/components/account-button";
@@ -15,6 +16,56 @@ import AccountButton from "@/components/account-button";
 import { useIsInitialized } from "@coinbase/cdp-hooks";
 
 import ThemeToggle from "@/components/theme-toggle";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+function ShareButton({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+  const referralLink = `https://refuel402.com/?referrer=${address}`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(referralLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="size-10">
+          <Share2 className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="outline-none">
+        <DialogHeader>
+          <DialogTitle>Share & Earn</DialogTitle>
+          <DialogDescription>
+            Share your referral link and earn{" "}
+            <span className="text-foreground font-semibold">60%</span> of the
+            fees from transactions made by your referrals.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center gap-2">
+          <Input readOnly value={referralLink} className="flex-1 text-sm" />
+          <Button onClick={handleCopy} variant="outline" size="icon">
+            {copied ? (
+              <Check className="size-4 text-green-500" />
+            ) : (
+              <Copy className="size-4" />
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Topbar() {
   const { setOpen: setConnectWalletModalOpen } = useConnectWalletModalStore();
@@ -60,9 +111,11 @@ export default function Topbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-3 md:ml-0 md:justify-self-end">
+        {address && <ShareButton address={address} />}
         <div className="hidden sm:block">
           <ThemeToggle />
         </div>
+
         {address ? (
           !isInitialized ? (
             <Skeleton className="h-10 w-32 rounded-lg" />

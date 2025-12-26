@@ -32,6 +32,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="devfun-verification" />
+      </head>
       <body className={`${roboto.variable} ${geistMono.variable} antialiased`}>
         <div className="flex flex-col min-h-screen relative">
           <Providers>

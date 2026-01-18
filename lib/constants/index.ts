@@ -1,4 +1,4 @@
-import { baseSepolia, optimismSepolia, bscTestnet, base, optimism, bsc } from "wagmi/chains";
+import { baseSepolia, optimismSepolia, bscTestnet, base, optimism, bsc, xLayer } from "wagmi/chains";
 
 export const REFERRER_ADDRESS = process.env.NEXT_PUBLIC_REFERRER_ADDRESS ?? "";
 
@@ -11,6 +11,7 @@ export const ethUsdcPoolFees: Record<number, number> = {
   [base.id]: 500,
   [optimism.id]: 500,
   [bsc.id]: 100,
+  [xLayer.id]: 500,
 };
 
 export const EXEC_REWARD_PER_USDC = 100;

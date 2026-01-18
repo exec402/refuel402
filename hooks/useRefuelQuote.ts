@@ -6,7 +6,7 @@ import { quoterAbi } from "@/lib/abis/quoterAbi";
 function scaleAmount(
   amount: bigint,
   fromDecimals: number,
-  toDecimals: number
+  toDecimals: number,
 ): bigint {
   if (fromDecimals === toDecimals) return amount;
 

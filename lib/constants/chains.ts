@@ -5,22 +5,23 @@ import {
   bscTestnet,
   optimism,
   bsc,
+  xLayer,
 } from "wagmi/chains";
 import type { Chain } from "viem";
 
 export const NETWORK = process.env.NEXT_PUBLIC_NETWORK ?? "testnet";
 
 export const DEFAULT_CHAIN_ID = Number(
-  NETWORK === "mainnet" ? "8453" : "84532"
+  NETWORK === "mainnet" ? "8453" : "84532",
 );
 
 export const SUPPORTED_CHAINS =
   NETWORK === "mainnet"
-    ? ([base, optimism, bsc] as const)
+    ? ([base, optimism, bsc, xLayer] as const)
     : ([baseSepolia, optimismSepolia, bscTestnet] as const);
 
 export const CHAIN_MAP: Record<number, Chain> = Object.fromEntries(
-  SUPPORTED_CHAINS.map((chain) => [chain.id, chain])
+  SUPPORTED_CHAINS.map((chain) => [chain.id, chain]),
 );
 
 export type SupportedChainId = (typeof SUPPORTED_CHAINS)[number]["id"];

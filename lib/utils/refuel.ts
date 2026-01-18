@@ -27,7 +27,7 @@ export function buildRefuelMessage(
   extraCalls: Call[] = [],
   amountUsdcOverride?: bigint,
   poolFeeOverride?: number,
-  usdcOverride?: Address
+  usdcOverride?: Address,
 ) {
   const targetChainConfig = getChainConfig(targetChainId);
   if (!targetChainConfig) {
@@ -57,7 +57,7 @@ export function buildRefuelMessage(
         from: execCore,
         to: multicallHandler,
         amount: amountUsdcBigInt,
-      })
+      }),
     );
   }
 
@@ -67,7 +67,7 @@ export function buildRefuelMessage(
       token: usdc,
       spender: swapRouter,
       amount: BigInt(2) ** BigInt(256) - BigInt(1),
-    })
+    }),
   );
 
   // Call 1: Swap USDC → WETH
@@ -81,7 +81,7 @@ export function buildRefuelMessage(
       amountIn: amountUsdcBigInt,
       amountOutMinimum: minEthOutBigInt,
       sqrtPriceLimitX96: BigInt(0),
-    })
+    }),
   );
 
   // Call 2: Unwrap WETH → ETH
@@ -113,7 +113,7 @@ export function buildRefuelMessage(
       callData: withdrawCalldata,
       value: BigInt(0),
       replacements,
-    })
+    }),
   );
 
   // Call 3: Distribute ETH evenly to all recipients
@@ -123,7 +123,7 @@ export function buildRefuelMessage(
       multicallHandler,
       token: "0x0000000000000000000000000000000000000000",
       recipients,
-    })
+    }),
   );
 
   // Add extra calls (e.g., mint call for same-chain refuel)
@@ -142,7 +142,7 @@ export async function getRefuelData(
   sourceChainId: number,
   targetChainId: number,
   minEthOut = "0",
-  poolFee?: number
+  poolFee?: number,
 ) {
   const sourceChainConfig = getChainConfig(sourceChainId);
   if (!sourceChainConfig) {
@@ -189,7 +189,7 @@ export async function getRefuelData(
       extraCalls,
       undefined,
       poolFee,
-      token
+      token,
     );
 
     const data = encodeFunctionData({
@@ -220,6 +220,9 @@ export async function getRefuelData(
   // We must swap exactly that amount, otherwise the swap will revert
   // due to insufficient balance on the MulticallHandler.
 
+  if (!sourceSpokePool) {
+    return undefined;
+  }
   let acrossQuote: AcrossQuote | null = null;
 
   if (isCrossChain) {
@@ -252,7 +255,7 @@ export async function getRefuelData(
     minEthOut,
     [],
     usdcForSwap,
-    poolFee
+    poolFee,
   );
 
   const outputAmount = acrossQuote ? acrossQuote.outputAmount : amountBigInt;

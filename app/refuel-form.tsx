@@ -22,7 +22,7 @@ import { REFERRER_ADDRESS, SUPPORTED_CHAINS } from "@/lib/constants";
 import { useTokenPrice } from "@exec402/react";
 import RecipientsUploader from "./recipients-uploader";
 
-import { BSC_USD1 } from "@/lib/constants/tokens";
+import { BSC_USD1, getEth } from "@/lib/constants/tokens";
 import { useCall } from "@exec402/react";
 
 import { toast } from "sonner";
@@ -66,7 +66,7 @@ export default function RefuelForm() {
   const currentChain = useCurrentChain();
 
   const [targetChain, setTargetChain] = useState<Chain>(
-    currentChain ?? SUPPORTED_CHAINS[0]
+    currentChain ?? SUPPORTED_CHAINS[0],
   );
   const [recipients, setRecipients] = useState<string[]>([]);
 
@@ -116,12 +116,12 @@ export default function RefuelForm() {
   }, [targetChain, currentChain]);
 
   const [toUseToken, setToUseToken] = useState<Token | undefined>(
-    currentChain?.id === bsc.id ? (isCrossChain ? usdc : BSC_USD1) : usdc
+    currentChain?.id === bsc.id ? (isCrossChain ? usdc : BSC_USD1) : usdc,
   );
 
   useEffect(() => {
     setToUseToken(
-      currentChain?.id === bsc.id ? (isCrossChain ? usdc : BSC_USD1) : usdc
+      currentChain?.id === bsc.id ? (isCrossChain ? usdc : BSC_USD1) : usdc,
     );
   }, [currentChain, isCrossChain, usdc]);
 
@@ -137,7 +137,7 @@ export default function RefuelForm() {
 
   const invalidDestination = useMemo(
     () => destination && !isAddress(destination),
-    [destination]
+    [destination],
   );
 
   const handlePickAmount = (a: number) => {
@@ -149,7 +149,7 @@ export default function RefuelForm() {
 
   const amountBigInt = useMemo(
     () => BigInt(amount * 10 ** (toUseToken?.decimals ?? 6)),
-    [amount, toUseToken]
+    [amount, toUseToken],
   );
 
   const [refuelData, setRefuleData] = useState<{
@@ -169,7 +169,7 @@ export default function RefuelForm() {
         currentChain.id,
         targetChain.id,
         "0",
-        toUseToken.address === BSC_USD1.address ? 500 : undefined
+        toUseToken.address === BSC_USD1.address ? 500 : undefined,
       ).then((data) => {
         if (!cancelled) {
           setRefuleData(data ?? null);
@@ -214,7 +214,7 @@ export default function RefuelForm() {
         currentChain.id,
         targetChain.id,
         "0",
-        toUseToken.address === BSC_USD1.address ? 500 : undefined
+        toUseToken.address === BSC_USD1.address ? 500 : undefined,
       ).catch(() => undefined);
 
       if (!latestRefuelData) {
@@ -238,7 +238,7 @@ export default function RefuelForm() {
           toUseToken?.address === BSC_USD1.address ? "permit" : undefined,
         amount: parseUnits(
           amount.toString(),
-          toUseToken?.decimals ?? 6
+          toUseToken?.decimals ?? 6,
         ).toString(),
         target: latestRefuelData.target,
         description,
@@ -285,9 +285,9 @@ export default function RefuelForm() {
     return balance === undefined
       ? false
       : Number(
-          formatUnits(BigInt(balance.balance), toUseToken?.decimals ?? 6)
+          formatUnits(BigInt(balance.balance), toUseToken?.decimals ?? 6),
         ) <
-          amount + (isAutoTaskFee ? autoTaskFee ?? 0 : Number(taskFee ?? 0));
+          amount + (isAutoTaskFee ? (autoTaskFee ?? 0) : Number(taskFee ?? 0));
   }, [balance, amount, autoTaskFee, taskFee, isAutoTaskFee, toUseToken]);
 
   const feeWarning = useMemo(() => {
@@ -317,7 +317,7 @@ export default function RefuelForm() {
                 className={cn(
                   "relative cursor-pointer py-4 whitespace-nowrap font-semibold",
                   "text-muted-foreground",
-                  active && "text-foreground"
+                  active && "text-foreground",
                 )}
               >
                 {label}
@@ -344,7 +344,7 @@ export default function RefuelForm() {
                 "text-sm text-muted-foreground",
                 Number(taskFee) < (autoTaskFee ?? 0) &&
                   !isAutoTaskFee &&
-                  "text-red-500"
+                  "text-red-500",
               )}
             >
               Fee: {formatNumber(isAutoTaskFee ? autoTaskFee : taskFee)}{" "}
@@ -368,7 +368,7 @@ export default function RefuelForm() {
                       className={cn(
                         "text-muted-foreground bg-accent hover:bg-accent/80 rounded-full",
                         isAutoTaskFee &&
-                          "bg-blue-50 hover:bg-blue-50 text-blue-500"
+                          "bg-blue-50 hover:bg-blue-50 text-blue-500",
                       )}
                       onClick={() => toggleIsAutoTaskFee()}
                     >
@@ -454,7 +454,7 @@ export default function RefuelForm() {
                 className={cn(
                   "h-11 relative font-semibold border-border/80 hover:bg-background active:scale-95 bg-white dark:bg-background/80 cursor-pointer transition-all",
                   amount === a &&
-                    "border-primary dark:border-primary shadow-md scale-105"
+                    "border-primary dark:border-primary shadow-md scale-105",
                 )}
                 onClick={() => handlePickAmount(a)}
               >
@@ -541,10 +541,7 @@ export default function RefuelForm() {
                   You&apos;ll get:{" "}
                   <span className="text-foreground">
                     {formatNumber(formatEther(refuelQuote))}{" "}
-                    {targetChain.id === bsc.id ||
-                    targetChain.id === bscTestnet.id
-                      ? "BNB"
-                      : "ETH"}
+                    {getEth(targetChain.id).symbol}
                   </span>
                   {targetEthPrice?.price && (
                     <span className="ml-1 text-muted-foreground/60">
@@ -553,7 +550,7 @@ export default function RefuelForm() {
                         (
                           Number(formatEther(refuelQuote)) *
                           targetEthPrice.price
-                        ).toFixed(3)
+                        ).toFixed(3),
                       )}
                       )
                     </span>

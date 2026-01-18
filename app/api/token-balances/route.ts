@@ -1,7 +1,9 @@
 import { alchemyApis } from "@/lib/constants/alchemyApi";
 import { blockScoutApis } from "@/lib/constants/blockScoutApis";
 import { getDefaultTokenList } from "@/lib/constants/tokens";
+import { CHAIN_MAP } from "@/lib/constants/chains";
 import { NextRequest, NextResponse } from "next/server";
+import { createPublicClient, http, erc20Abi, type Address } from "viem";
 
 interface AlchemyTokenBalance {
   contractAddress: string;
@@ -34,6 +36,69 @@ interface BlockScoutToken {
 const ZERO_BALANCE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 
+async function getBalancesViaRpc(
+  chainId: number,
+  userAddress: Address
+): Promise<
+  { token: BlockScoutToken; token_id: null; value: string }[]
+> {
+  const chain = CHAIN_MAP[chainId];
+  if (!chain) {
+    return [];
+  }
+
+  const defaultTokens = getDefaultTokenList(chainId);
+  if (defaultTokens.length === 0) {
+    return [];
+  }
+
+  const client = createPublicClient({
+    chain,
+    transport: http(),
+  });
+
+  const balanceResults = await client.multicall({
+    contracts: defaultTokens.map((token) => ({
+      address: token.address as Address,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [userAddress],
+    })),
+  });
+
+  const data: { token: BlockScoutToken; token_id: null; value: string }[] = [];
+
+  for (let i = 0; i < defaultTokens.length; i++) {
+    const result = balanceResults[i];
+    const token = defaultTokens[i];
+
+    if (result.status === "success" && result.result) {
+      const balance = result.result as bigint;
+      if (balance > BigInt(0)) {
+        data.push({
+          token: {
+            address_hash: token.address,
+            circulating_market_cap: null,
+            decimals: token.decimals.toString(),
+            exchange_rate: null,
+            holders_count: "0",
+            icon_url: token.logoUri,
+            name: token.name,
+            symbol: token.symbol,
+            total_supply: "0",
+            type: "ERC-20",
+            volume_24h: null,
+          },
+          token_id: null,
+          value: balance.toString(),
+        });
+      }
+    }
+  }
+
+  return data;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -49,7 +114,11 @@ export async function GET(req: NextRequest) {
     const blockScoutApi = blockScoutApis[numericChainId];
 
     if (!alchemyApi) {
-      throw new Error("Unsupported chain");
+      const data = await getBalancesViaRpc(
+        numericChainId,
+        address as Address
+      );
+      return NextResponse.json({ success: true, data });
     }
 
     const balancesRes = await fetch(alchemyApi, {

@@ -17,7 +17,7 @@ export const DEFAULT_CHAIN_ID = Number(
 
 export const SUPPORTED_CHAINS =
   NETWORK === "mainnet"
-    ? ([base, optimism, bsc, xLayer] as const)
+    ? ([bsc, base, optimism, xLayer] as const)
     : ([baseSepolia, optimismSepolia, bscTestnet] as const);
 
 export const CHAIN_MAP: Record<number, Chain> = Object.fromEntries(
